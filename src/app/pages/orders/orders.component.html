@@ -538,3 +538,154 @@
     </div>
   </div>
 </div>
+
+<!-- View Order Modal -->
+<div class="modal" [class.active]="showViewModal" *ngIf="showViewModal">
+  <div class="modal-backdrop" (click)="closeViewModal()"></div>
+  <div class="modal-content large">
+    <div class="modal-header">
+      <h3>Order Details - {{ selectedOrder?.orderNumber }}</h3>
+      <button class="btn btn-close" (click)="closeViewModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body" *ngIf="selectedOrder">
+      <!-- Order Status and Priority -->
+      <div class="order-status-section">
+        <div class="status-badge" [class]="'status-' + selectedOrder.status">
+          {{ selectedOrder.status | titlecase }}
+        </div>
+        <div class="priority-badge" [class]="'priority-' + selectedOrder.priority">
+          {{ selectedOrder.priority | titlecase }} Priority
+        </div>
+        <div class="order-date">
+          <i class="fas fa-calendar"></i>
+          Created: {{ selectedOrder.createdAt | date:'medium' }}
+        </div>
+      </div>
+
+      <!-- Customer Information -->
+      <div class="info-section">
+        <h4><i class="fas fa-user"></i> Customer Information</h4>
+        <div class="info-grid">
+          <div class="info-item">
+            <label>Name:</label>
+            <span>{{ selectedOrder.customerName }}</span>
+          </div>
+          <div class="info-item">
+            <label>Email:</label>
+            <span>{{ selectedOrder.customerEmail }}</span>
+          </div>
+          <div class="info-item">
+            <label>Phone:</label>
+            <span>{{ selectedOrder.customerPhone }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Shipping Address -->
+      <div class="info-section">
+        <h4><i class="fas fa-shipping-fast"></i> Shipping Address</h4>
+        <div class="address-block">
+          <p>{{ selectedOrder.shippingAddress.street }}</p>
+          <p>{{ selectedOrder.shippingAddress.city }}, {{ selectedOrder.shippingAddress.state }} {{ selectedOrder.shippingAddress.zipCode }}</p>
+          <p>{{ selectedOrder.shippingAddress.country }}</p>
+        </div>
+      </div>
+
+      <!-- Order Items -->
+      <div class="info-section">
+        <h4><i class="fas fa-box"></i> Order Items ({{ selectedOrder.items.length }})</h4>
+        <div class="order-items-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>SKU</th>
+                <th>Quantity</th>
+                <th>Unit Price</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of selectedOrder.items">
+                <td class="product-cell">
+                  <div class="product-info">
+                    <img [src]="item.product.imageUrl || 'assets/images/default-product.svg'" 
+                         [alt]="item.product.name" 
+                         class="product-image">
+                    <div class="product-details">
+                      <div class="product-name">{{ item.product.name }}</div>
+                      <div class="product-brand">{{ item.product.brand }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td>{{ item.product.sku }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.unitPrice | currency }}</td>
+                <td>{{ item.totalPrice | currency }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Order Summary -->
+      <div class="info-section">
+        <h4><i class="fas fa-calculator"></i> Order Summary</h4>
+        <div class="order-summary">
+          <div class="summary-row">
+            <span>Subtotal:</span>
+            <span>{{ selectedOrder.subtotal | currency }}</span>
+          </div>
+          <div class="summary-row" *ngIf="selectedOrder.taxAmount > 0">
+            <span>Tax:</span>
+            <span>{{ selectedOrder.taxAmount | currency }}</span>
+          </div>
+          <div class="summary-row" *ngIf="selectedOrder.shippingAmount > 0">
+            <span>Shipping:</span>
+            <span>{{ selectedOrder.shippingAmount | currency }}</span>
+          </div>
+          <div class="summary-row" *ngIf="selectedOrder.discountAmount > 0">
+            <span>Discount:</span>
+            <span>-{{ selectedOrder.discountAmount | currency }}</span>
+          </div>
+          <div class="summary-row total">
+            <span>Total:</span>
+            <span>{{ selectedOrder.totalAmount | currency }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Additional Information -->
+      <div class="info-section" *ngIf="selectedOrder.notes || selectedOrder.trackingNumber || selectedOrder.assignedToName">
+        <h4><i class="fas fa-info-circle"></i> Additional Information</h4>
+        <div class="info-grid">
+          <div class="info-item" *ngIf="selectedOrder.notes">
+            <label>Notes:</label>
+            <span>{{ selectedOrder.notes }}</span>
+          </div>
+          <div class="info-item" *ngIf="selectedOrder.trackingNumber">
+            <label>Tracking Number:</label>
+            <span>{{ selectedOrder.trackingNumber }}</span>
+          </div>
+          <div class="info-item" *ngIf="selectedOrder.assignedToName">
+            <label>Assigned To:</label>
+            <span>{{ selectedOrder.assignedToName }}</span>
+          </div>
+          <div class="info-item" *ngIf="selectedOrder.expectedDeliveryDate">
+            <label>Expected Delivery:</label>
+            <span>{{ selectedOrder.expectedDeliveryDate | date:'medium' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeViewModal()">Close</button>
+      <button class="btn btn-primary" (click)="editOrder(selectedOrder!)" *ngIf="canManageOrders()">
+        <i class="fas fa-edit"></i>
+        Edit Order
+      </button>
+    </div>
+  </div>
+</div>

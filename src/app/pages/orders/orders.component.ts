@@ -50,6 +50,7 @@ export class OrdersComponent implements OnInit, OnDestroy {
   // Modals
   showOrderModal = false;
   showStatusModal = false;
+  showViewModal = false;
   editingOrder: Order | null = null;
   selectedOrder: Order | null = null;
   
@@ -449,7 +450,13 @@ export class OrdersComponent implements OnInit, OnDestroy {
   }
 
   viewOrder(order: Order) {
-    this.notificationService.showInfo('Order details view coming soon!');
+    this.selectedOrder = order;
+    this.showViewModal = true;
+  }
+
+  closeViewModal() {
+    this.showViewModal = false;
+    this.selectedOrder = null;
   }
 
   // Status Management
