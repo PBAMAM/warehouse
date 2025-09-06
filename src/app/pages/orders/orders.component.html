@@ -440,15 +440,15 @@
         <div class="form-section">
           <h4>Order Items</h4>
           <div class="items-management">
-            <div class="add-item">
-              <select [(ngModel)]="selectedProduct" (change)="onProductSelect()">
+            <div class="add-item" [formGroup]="itemForm">
+              <select formControlName="selectedProduct" (change)="onProductSelect()">
                 <option value="">Select Product</option>
                 <option *ngFor="let product of products" [value]="product.id">
                   {{ product.name }} - {{ product.sku }}
                 </option>
               </select>
-              <input type="number" [(ngModel)]="itemQuantity" placeholder="Quantity" min="1">
-              <button type="button" class="btn btn-primary" (click)="addItem()">
+              <input type="number" formControlName="itemQuantity" placeholder="Quantity" min="1">
+              <button type="button" class="btn btn-primary" (click)="addItem()" [disabled]="itemForm.invalid">
                 <i class="fas fa-plus"></i>
                 Add Item
               </button>
@@ -461,7 +461,7 @@
                   <span class="item-sku">{{ item.product.sku }}</span>
                 </div>
                 <div class="item-quantity">
-                  <input type="number" [(ngModel)]="item.quantity" min="1" (change)="updateItemTotal(item)">
+                  <input type="number" [value]="item.quantity" min="1" (change)="updateItemQuantity(i, $event)">
                 </div>
                 <div class="item-price">
                   {{ item.unitPrice | currency }}
@@ -482,9 +482,15 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" (click)="closeOrderModal()">Cancel</button>
-      <button class="btn btn-primary" (click)="saveOrder()" [disabled]="orderForm.invalid || orderItems.length === 0">
+      <button type="button" class="btn btn-primary" (click)="saveOrder()" [disabled]="orderForm.invalid || orderItems.length === 0">
         {{ editingOrder ? 'Update' : 'Create' }}
       </button>
+      <div *ngIf="orderForm.invalid" class="form-error">
+        Please fill in all required fields
+      </div>
+      <div *ngIf="orderItems.length === 0" class="form-error">
+        Please add at least one item to the order
+      </div>
     </div>
   </div>
 </div>

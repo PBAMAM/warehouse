@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Observable, Subject, combineLatest, from } from 'rxjs';
 import { takeUntil, map, debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { InventoryService } from '../../core/services/inventory.service';
 import { WarehouseService } from '../../core/services/warehouse.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -72,7 +73,8 @@ export class InventoryComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private notificationService: NotificationService,
     private fb: FormBuilder,
-    private router: Router
+    private router: Router,
+    private firestore: AngularFirestore
   ) {
     this.initializeForms();
     this.initializeData();
@@ -153,6 +155,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
     this.authService.getCurrentUser()
       .pipe(takeUntil(this.destroy$))
       .subscribe(user => {
+        console.log('Current user loaded:', user);
         this.currentUser = user;
       });
 
@@ -257,7 +260,9 @@ export class InventoryComponent implements OnInit, OnDestroy {
   }
 
   canManageInventory(): boolean {
-    return this.currentUser?.role === 'admin' || this.currentUser?.role === 'manager';
+    const canManage = this.currentUser?.role === 'admin' || this.currentUser?.role === 'manager';
+    console.log('Can manage inventory:', canManage, 'User role:', this.currentUser?.role);
+    return canManage;
   }
 
   // Product Management
@@ -268,6 +273,8 @@ export class InventoryComponent implements OnInit, OnDestroy {
   }
 
   editProduct(item: InventoryItem) {
+    console.log('Edit product clicked:', item);
+    alert('Edit button clicked!'); // Temporary debug
     this.editingProduct = item.product;
     this.productForm.patchValue({
       name: item.product.name,
@@ -279,7 +286,8 @@ export class InventoryComponent implements OnInit, OnDestroy {
       unit: item.product.unit,
       weight: item.product.weight,
       description: item.product.description,
-      barcode: item.product.barcode
+      barcode: item.product.barcode,
+      imageUrl: item.product.imageUrl || 'assets/images/default-product.svg'
     });
     this.showProductModal = true;
   }
@@ -295,29 +303,61 @@ export class InventoryComponent implements OnInit, OnDestroy {
       const productData = this.productForm.value;
       
       if (this.editingProduct) {
-        from(this.inventoryService.updateProduct(this.editingProduct.id!, productData))
+        // Update existing inventory item
+        const inventoryItemData = {
+          product: {
+            ...this.editingProduct,
+            ...productData
+          }
+        };
+        
+        from(this.inventoryService.updateInventoryItem(this.editingProduct.id!, inventoryItemData))
           .pipe(takeUntil(this.destroy$))
           .subscribe({
             next: () => {
-              this.notificationService.showSuccess('Product updated successfully!');
+              this.notificationService.showSuccess('Inventory item updated successfully!');
               this.closeProductModal();
             },
             error: (error: any) => {
-              this.notificationService.showError('Failed to update product');
-              console.error('Error updating product:', error);
+              this.notificationService.showError('Failed to update inventory item');
+              console.error('Error updating inventory item:', error);
             }
           });
       } else {
-        from(this.inventoryService.createProduct(productData))
+        // Create new inventory item
+        const inventoryItemData = {
+          productId: this.firestore.createId(),
+          product: {
+            id: this.firestore.createId(),
+            ...productData,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          },
+          warehouseId: this.warehouses[0]?.id || 'default-warehouse',
+          quantity: 0,
+          reservedQuantity: 0,
+          availableQuantity: 0,
+          minStockLevel: 0,
+          maxStockLevel: 100,
+          reorderPoint: 10,
+          lastUpdated: new Date(),
+          location: '',
+          batchNumber: '',
+          supplierId: '',
+          supplierName: '',
+          notes: ''
+        };
+        
+        from(this.inventoryService.createInventoryItem(inventoryItemData))
           .pipe(takeUntil(this.destroy$))
           .subscribe({
             next: () => {
-              this.notificationService.showSuccess('Product created successfully!');
+              this.notificationService.showSuccess('Inventory item created successfully!');
               this.closeProductModal();
             },
             error: (error: any) => {
-              this.notificationService.showError('Failed to create product');
-              console.error('Error creating product:', error);
+              this.notificationService.showError('Failed to create inventory item');
+              console.error('Error creating inventory item:', error);
             }
           });
       }
@@ -325,16 +365,20 @@ export class InventoryComponent implements OnInit, OnDestroy {
   }
 
   deleteProduct(item: InventoryItem) {
-    if (confirm('Are you sure you want to delete this product?')) {
-      from(this.inventoryService.deleteProduct(item.product.id!))
+    console.log('Delete inventory item clicked:', item);
+    alert('Delete button clicked!'); // Temporary debug
+    if (confirm('Are you sure you want to delete this inventory item?')) {
+      from(this.inventoryService.deleteInventoryItem(item.id!))
         .pipe(takeUntil(this.destroy$))
         .subscribe({
           next: () => {
-            this.notificationService.showSuccess('Product deleted successfully!');
+            this.notificationService.showSuccess('Inventory item deleted successfully!');
+            // Refresh the inventory data
+            this.loadData();
           },
           error: (error: any) => {
-            this.notificationService.showError('Failed to delete product');
-            console.error('Error deleting product:', error);
+            this.notificationService.showError('Failed to delete inventory item');
+            console.error('Error deleting inventory item:', error);
           }
         });
     }
@@ -384,6 +428,8 @@ export class InventoryComponent implements OnInit, OnDestroy {
           next: () => {
             this.notificationService.showSuccess('Stock adjusted successfully!');
             this.closeStockModal();
+            // Refresh the inventory data to show updated quantities
+            this.loadData();
           },
           error: (error) => {
             this.notificationService.showError('Failed to adjust stock');
@@ -412,22 +458,6 @@ export class InventoryComponent implements OnInit, OnDestroy {
     this.router.navigate(['/dashboard']);
   }
 
-  // Sample Data
-  createSampleData() {
-    from(this.inventoryService.createSampleData())
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: () => {
-          this.notificationService.showSuccess('Sample data created successfully!');
-          // Refresh the inventory data
-          this.loadData();
-        },
-        error: (error: any) => {
-          this.notificationService.showError('Failed to create sample data');
-          console.error('Error creating sample data:', error);
-        }
-      });
-  }
 
   // Category Management
   openCategoryModal() {

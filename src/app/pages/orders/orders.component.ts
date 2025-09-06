@@ -8,7 +8,7 @@ import { InventoryService } from '../../core/services/inventory.service';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { Order, OrderItem, OrderStatus, OrderPriority } from '../../core/models/order.model';
-import { Product } from '../../core/models/inventory.model';
+import { Product, InventoryItem } from '../../core/models/inventory.model';
 import { User } from '../../core/models/user.model';
 
 @Component({
@@ -21,7 +21,7 @@ export class OrdersComponent implements OnInit, OnDestroy {
   
   // Data observables
   orders$!: Observable<Order[]>;
-  products$!: Observable<Product[]>;
+  inventory$!: Observable<InventoryItem[]>;
   user$!: Observable<User | null>;
   
   // Filtered data
@@ -56,13 +56,12 @@ export class OrdersComponent implements OnInit, OnDestroy {
   // Forms
   orderForm!: FormGroup;
   statusForm!: FormGroup;
+  itemForm!: FormGroup;
   
   // Local data
   currentUser: User | null = null;
   products: Product[] = [];
   orderItems: OrderItem[] = [];
-  selectedProduct: string = '';
-  itemQuantity = 1;
 
   constructor(
     private orderService: OrderService,
@@ -107,11 +106,16 @@ export class OrdersComponent implements OnInit, OnDestroy {
       trackingNumber: [''],
       notes: ['']
     });
+
+    this.itemForm = this.fb.group({
+      selectedProduct: ['', Validators.required],
+      itemQuantity: [1, [Validators.required, Validators.min(1)]]
+    });
   }
 
   private initializeData() {
     this.orders$ = this.orderService.getOrders();
-    this.products$ = this.inventoryService.getProducts();
+    this.inventory$ = this.inventoryService.getInventory();
     this.user$ = this.authService.getCurrentUser();
   }
 
@@ -123,11 +127,16 @@ export class OrdersComponent implements OnInit, OnDestroy {
         this.currentUser = user;
       });
 
-    // Load products
-    this.products$
+    // Load products from inventory
+    this.inventory$
       .pipe(takeUntil(this.destroy$))
-      .subscribe(products => {
-        this.products = products;
+      .subscribe(inventory => {
+        // Extract unique products from inventory items
+        this.products = inventory
+          .map(item => item.product)
+          .filter((product, index, self) => 
+            product && self.findIndex(p => p?.id === product.id) === index
+          ) as Product[];
       });
 
     // Load orders with filters
@@ -297,34 +306,47 @@ export class OrdersComponent implements OnInit, OnDestroy {
   }
 
   onProductSelect() {
-    if (this.selectedProduct) {
-      const product = this.products.find(p => p.id === this.selectedProduct);
+    const selectedProductId = this.itemForm.get('selectedProduct')?.value;
+    if (selectedProductId) {
+      const product = this.products.find(p => p.id === selectedProductId);
       if (product) {
-        this.itemQuantity = 1;
+        this.itemForm.patchValue({ itemQuantity: 1 });
       }
     }
   }
 
   addItem() {
-    if (this.selectedProduct && this.itemQuantity > 0) {
-      const product = this.products.find(p => p.id === this.selectedProduct);
-      if (product) {
-        const existingItem = this.orderItems.find(item => item.productId === product.id);
-        if (existingItem) {
-          existingItem.quantity += this.itemQuantity;
-          existingItem.totalPrice = existingItem.quantity * existingItem.unitPrice;
-        } else {
-          const newItem: OrderItem = {
-            productId: product.id!,
-            product: product,
-            quantity: this.itemQuantity,
-            unitPrice: product.unitPrice,
-            totalPrice: this.itemQuantity * product.unitPrice
-          };
-          this.orderItems.push(newItem);
+    console.log('Add item clicked');
+    console.log('Item form valid:', this.itemForm.valid);
+    console.log('Item form value:', this.itemForm.value);
+    
+    if (this.itemForm.valid) {
+      const selectedProductId = this.itemForm.get('selectedProduct')?.value;
+      const itemQuantity = this.itemForm.get('itemQuantity')?.value;
+      
+      console.log('Selected product ID:', selectedProductId);
+      console.log('Item quantity:', itemQuantity);
+      
+      if (selectedProductId && itemQuantity > 0) {
+        const product = this.products.find(p => p.id === selectedProductId);
+        if (product) {
+          const existingItem = this.orderItems.find(item => item.productId === product.id);
+          if (existingItem) {
+            existingItem.quantity += itemQuantity;
+            existingItem.totalPrice = existingItem.quantity * existingItem.unitPrice;
+          } else {
+            const newItem: OrderItem = {
+              productId: product.id!,
+              product: product,
+              quantity: itemQuantity,
+              unitPrice: product.unitPrice,
+              totalPrice: itemQuantity * product.unitPrice
+            };
+            this.orderItems.push(newItem);
+          }
+          this.itemForm.reset();
+          this.itemForm.patchValue({ itemQuantity: 1 });
         }
-        this.selectedProduct = '';
-        this.itemQuantity = 1;
       }
     }
   }
@@ -333,11 +355,31 @@ export class OrdersComponent implements OnInit, OnDestroy {
     this.orderItems.splice(index, 1);
   }
 
+  updateItemQuantity(index: number, event: any) {
+    const newQuantity = parseInt(event.target.value);
+    if (newQuantity > 0) {
+      this.orderItems[index].quantity = newQuantity;
+      this.orderItems[index].totalPrice = newQuantity * this.orderItems[index].unitPrice;
+    }
+  }
+
   updateItemTotal(item: OrderItem) {
     item.totalPrice = item.quantity * item.unitPrice;
   }
 
   saveOrder() {
+    console.log('Save order clicked');
+    console.log('Order form valid:', this.orderForm.valid);
+    console.log('Order items length:', this.orderItems.length);
+    console.log('Order form errors:', this.orderForm.errors);
+    console.log('Order form value:', this.orderForm.value);
+    
+    // Check individual form control validity
+    Object.keys(this.orderForm.controls).forEach(key => {
+      const control = this.orderForm.get(key);
+      console.log(`${key} valid:`, control?.valid, 'errors:', control?.errors);
+    });
+    
     if (this.orderForm.valid && this.orderItems.length > 0) {
       const orderData = this.orderForm.value;
       const subtotal = this.orderItems.reduce((sum, item) => sum + item.totalPrice, 0);
@@ -370,6 +412,10 @@ export class OrdersComponent implements OnInit, OnDestroy {
         discountAmount: 0
       };
 
+      console.log('Order items:', this.orderItems);
+      console.log('Order subtotal:', subtotal);
+      console.log('Order total amount:', totalAmount);
+
       if (this.editingOrder) {
         from(this.orderService.updateOrder(this.editingOrder.id!, order))
           .pipe(takeUntil(this.destroy$))
@@ -384,16 +430,18 @@ export class OrdersComponent implements OnInit, OnDestroy {
             }
           });
       } else {
+        console.log('Creating new order with data:', order);
         from(this.orderService.createOrder(order as any))
           .pipe(takeUntil(this.destroy$))
           .subscribe({
-            next: () => {
+            next: (orderId) => {
+              console.log('Order created successfully with ID:', orderId);
               this.notificationService.showSuccess('Order created successfully!');
               this.closeOrderModal();
             },
             error: (error: any) => {
-              this.notificationService.showError('Failed to create order');
               console.error('Error creating order:', error);
+              this.notificationService.showError('Failed to create order: ' + error.message);
             }
           });
       }

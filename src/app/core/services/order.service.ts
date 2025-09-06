@@ -47,18 +47,51 @@ export class OrderService {
 
   async createOrder(order: Omit<Order, 'id'>): Promise<string> {
     try {
+      console.log('Order service - creating order with data:', order);
+      
       const orderNumber = await this.generateOrderNumber();
-      const docRef = await this.ordersCollection.add({
+      console.log('Generated order number:', orderNumber);
+      
+      const orderData = {
         ...order,
         orderNumber,
         createdAt: new Date(),
         updatedAt: new Date()
+      };
+      
+      console.log('Order data to be saved:', orderData);
+      
+      // Test if we can access the collection
+      console.log('Orders collection reference:', this.ordersCollection.ref);
+      
+      // Test Firebase connection with a simple write
+      console.log('Testing Firebase connection...');
+      try {
+        const testDoc = await this.ordersCollection.ref.doc('test').set({ test: true } as any);
+        console.log('Firebase connection test successful');
+        await this.ordersCollection.ref.doc('test').delete();
+        console.log('Test document cleaned up');
+      } catch (testError) {
+        console.error('Firebase connection test failed:', testError);
+        throw new Error('Firebase connection failed: ' + (testError as Error).message);
+      }
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Order creation timeout')), 10000);
       });
+      
+      const createPromise = this.ordersCollection.add(orderData);
+      
+      const docRef = await Promise.race([createPromise, timeoutPromise]);
+      console.log('Order created in Firebase with ID:', docRef.id);
+      
       this.notificationService.showSuccess('Order created successfully', 'Success');
       return docRef.id;
     } catch (error) {
-      this.notificationService.showError('Failed to create order', 'Error');
-      console.error('Error creating order:', error);
+      console.error('Error creating order in service:', error);
+      console.error('Error details:', error);
+      this.notificationService.showError('Failed to create order: ' + (error as Error).message, 'Error');
       throw error;
     }
   }
@@ -220,17 +253,12 @@ export class OrderService {
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
     
-    // Get count of orders today
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    // Generate a simple unique order number using timestamp
+    const timestamp = Date.now().toString().slice(-6);
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const orderNumber = `ORD-${year}${month}${day}-${timestamp}-${random}`;
     
-    const todayOrders = await this.getOrdersByDateRange(startOfDay, endOfDay).pipe(
-      map(orders => orders.length)
-    ).toPromise();
-    
-    const orderCount = (todayOrders || 0) + 1;
-    const orderNumber = `ORD-${year}${month}${day}-${String(orderCount).padStart(4, '0')}`;
-    
+    console.log('Generated order number:', orderNumber);
     return orderNumber;
   }
 
