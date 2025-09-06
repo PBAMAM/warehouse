@@ -1,0 +1,51 @@
+<div class="sidebar" [class.collapsed]="isCollapsed">
+  <!-- Sidebar Header -->
+  <div class="sidebar-header">
+    <div class="logo" *ngIf="!isCollapsed">
+      <i class="fas fa-warehouse"></i>
+      <span>Warehouse Pro</span>
+    </div>
+    <div class="logo-collapsed" *ngIf="isCollapsed">
+      <i class="fas fa-warehouse"></i>
+    </div>
+    <button class="toggle-btn" (click)="toggleSidebar()">
+      <i class="fas" [class.fa-bars]="isCollapsed" [class.fa-times]="!isCollapsed"></i>
+    </button>
+  </div>
+
+  <!-- User Info -->
+  <div class="user-info" *ngIf="user$ | async as user" [class.collapsed]="isCollapsed">
+    <div class="user-avatar">
+      <i class="fas fa-user"></i>
+    </div>
+    <div class="user-details" *ngIf="!isCollapsed">
+      <div class="user-name">{{ user.displayName || user.email }}</div>
+      <div class="user-role">{{ user.role | titlecase }}</div>
+    </div>
+  </div>
+
+  <!-- Navigation Menu -->
+  <nav class="sidebar-nav">
+    <ul class="nav-list">
+      <li class="nav-item" *ngFor="let item of navigationItems">
+        <a 
+          class="nav-link" 
+          [class.active]="item.active"
+          [class.collapsed]="isCollapsed"
+          (click)="navigateTo(item.route)"
+          [title]="isCollapsed ? item.label : ''">
+          <i class="nav-icon" [class]="item.icon"></i>
+          <span class="nav-label" *ngIf="!isCollapsed">{{ item.label }}</span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- Sidebar Footer -->
+  <div class="sidebar-footer">
+    <button class="logout-btn" (click)="logout()" [class.collapsed]="isCollapsed">
+      <i class="fas fa-sign-out-alt"></i>
+      <span *ngIf="!isCollapsed">Logout</span>
+    </button>
+  </div>
+</div>

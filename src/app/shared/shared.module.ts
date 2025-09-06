@@ -14,6 +14,7 @@ import { NotificationToastComponent } from './components/notification-toast/noti
 import { ConfirmDialogComponent } from './components/confirm-dialog/confirm-dialog.component';
 import { SearchBoxComponent } from './components/search-box/search-box.component';
 import { PaginationComponent } from './components/pagination/pagination.component';
+import { SidebarComponent } from './components/sidebar/sidebar.component';
 
 // Pipes
 import { TimeAgoPipe } from './pipes/time-ago.pipe';
@@ -30,7 +31,8 @@ const COMPONENTS = [
   NotificationToastComponent,
   ConfirmDialogComponent,
   SearchBoxComponent,
-  PaginationComponent
+  PaginationComponent,
+  SidebarComponent
 ];
 
 const PIPES: any[] = [

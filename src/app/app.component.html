@@ -1,7 +1,13 @@
 <!-- Main App Container -->
 <div class="app-container">
-  <!-- Router Outlet for Pages -->
-  <router-outlet></router-outlet>
+  <!-- Sidebar Navigation -->
+  <app-sidebar *ngIf="showSidebar"></app-sidebar>
+  
+  <!-- Main Content Area -->
+  <div class="main-content" [class.full-width]="!showSidebar">
+    <!-- Router Outlet for Pages -->
+    <router-outlet></router-outlet>
+  </div>
   
   <!-- Global Loading Spinner -->
   <app-loading-spinner 

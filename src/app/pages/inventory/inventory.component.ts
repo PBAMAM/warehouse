@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import { Observable, Subject, combineLatest, from } from 'rxjs';
 import { takeUntil, map, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { InventoryService } from '../../core/services/inventory.service';
@@ -50,12 +51,15 @@ export class InventoryComponent implements OnInit, OnDestroy {
   // Modals
   showProductModal = false;
   showStockModal = false;
+  showCategoryModal = false;
   editingProduct: Product | null = null;
   selectedItem: InventoryItem | null = null;
+  editingCategory: Category | null = null;
   
   // Forms
   productForm!: FormGroup;
   stockForm!: FormGroup;
+  categoryForm!: FormGroup;
   
   // Local data
   warehouses: Warehouse[] = [];
@@ -67,7 +71,8 @@ export class InventoryComponent implements OnInit, OnDestroy {
     private warehouseService: WarehouseService,
     private authService: AuthService,
     private notificationService: NotificationService,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private router: Router
   ) {
     this.initializeForms();
     this.initializeData();
@@ -76,6 +81,16 @@ export class InventoryComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.loadData();
     this.setupFilters();
+    
+    // Direct subscription to inventory data
+    this.inventoryService.getInventory()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(inventory => {
+        console.log('Direct inventory subscription:', inventory);
+        this.filteredInventory = this.applyFilters(inventory);
+        this.calculateStats();
+        this.calculatePagination();
+      });
   }
 
   ngOnDestroy() {
@@ -94,7 +109,8 @@ export class InventoryComponent implements OnInit, OnDestroy {
       unit: ['', Validators.required],
       weight: [0, Validators.min(0)],
       description: [''],
-      barcode: ['']
+      barcode: [''],
+      imageUrl: ['assets/images/default-product.svg']
     });
 
     this.stockForm = this.fb.group({
@@ -102,6 +118,12 @@ export class InventoryComponent implements OnInit, OnDestroy {
       quantity: [0, [Validators.required, Validators.min(1)]],
       reason: ['', Validators.required],
       notes: ['']
+    });
+
+    this.categoryForm = this.fb.group({
+      name: ['', Validators.required],
+      description: [''],
+      isActive: [true]
     });
   }
 
@@ -134,17 +156,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
         this.currentUser = user;
       });
 
-    // Load inventory with filters
-    this.inventory$
-      .pipe(
-        takeUntil(this.destroy$),
-        map(inventory => this.applyFilters(inventory))
-      )
-      .subscribe(inventory => {
-        this.filteredInventory = inventory;
-        this.calculateStats();
-        this.calculatePagination();
-      });
+    // Inventory loading is now handled in ngOnInit
   }
 
   private setupFilters() {
@@ -393,5 +405,101 @@ export class InventoryComponent implements OnInit, OnDestroy {
           console.error('Error exporting inventory:', error);
         }
       });
+  }
+
+  // Navigation
+  goToDashboard() {
+    this.router.navigate(['/dashboard']);
+  }
+
+  // Sample Data
+  createSampleData() {
+    from(this.inventoryService.createSampleData())
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.notificationService.showSuccess('Sample data created successfully!');
+          // Refresh the inventory data
+          this.loadData();
+        },
+        error: (error: any) => {
+          this.notificationService.showError('Failed to create sample data');
+          console.error('Error creating sample data:', error);
+        }
+      });
+  }
+
+  // Category Management
+  openCategoryModal() {
+    this.showCategoryModal = true;
+    this.editingCategory = null;
+    this.categoryForm.reset();
+    this.categoryForm.patchValue({ isActive: true });
+  }
+
+  closeCategoryModal() {
+    this.showCategoryModal = false;
+    this.editingCategory = null;
+    this.categoryForm.reset();
+  }
+
+  addCategory() {
+    if (this.categoryForm.valid) {
+      const categoryData = this.categoryForm.value;
+      
+      if (this.editingCategory) {
+        from(this.inventoryService.updateCategory(this.editingCategory.id!, categoryData))
+          .pipe(takeUntil(this.destroy$))
+          .subscribe({
+            next: () => {
+              this.notificationService.showSuccess('Category updated successfully!');
+              this.closeCategoryModal();
+            },
+            error: (error: any) => {
+              this.notificationService.showError('Failed to update category');
+              console.error('Error updating category:', error);
+            }
+          });
+      } else {
+        from(this.inventoryService.createCategory(categoryData))
+          .pipe(takeUntil(this.destroy$))
+          .subscribe({
+            next: () => {
+              this.notificationService.showSuccess('Category created successfully!');
+              this.categoryForm.reset();
+              this.categoryForm.patchValue({ isActive: true });
+            },
+            error: (error: any) => {
+              this.notificationService.showError('Failed to create category');
+              console.error('Error creating category:', error);
+            }
+          });
+      }
+    }
+  }
+
+  editCategory(category: Category) {
+    this.editingCategory = category;
+    this.categoryForm.patchValue({
+      name: category.name,
+      description: category.description,
+      isActive: category.isActive
+    });
+  }
+
+  deleteCategory(category: Category) {
+    if (confirm(`Are you sure you want to delete the category "${category.name}"?`)) {
+      from(this.inventoryService.deleteCategory(category.id!))
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: () => {
+            this.notificationService.showSuccess('Category deleted successfully!');
+          },
+          error: (error: any) => {
+            this.notificationService.showError('Failed to delete category');
+            console.error('Error deleting category:', error);
+          }
+        });
+    }
   }
 }

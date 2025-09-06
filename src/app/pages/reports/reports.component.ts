@@ -1,4 +1,5 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Router } from '@angular/router';
 import { Observable, Subject } from 'rxjs';
 import { takeUntil, map } from 'rxjs/operators';
 import { OrderService } from '../../core/services/order.service';
@@ -66,7 +67,8 @@ export class ReportsComponent implements OnInit, OnDestroy {
     private inventoryService: InventoryService,
     private warehouseService: WarehouseService,
     private authService: AuthService,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private router: Router
   ) {
     this.initializeData();
     this.setupDateRange();
@@ -199,16 +201,21 @@ export class ReportsComponent implements OnInit, OnDestroy {
   }
 
   viewAllOrders() {
-    this.notificationService.showInfo('Redirecting to orders page...');
+    this.router.navigate(['/orders']);
   }
 
   viewAllInventory() {
-    this.notificationService.showInfo('Redirecting to inventory page...');
+    this.router.navigate(['/inventory']);
   }
 
   getStockStatus(item: InventoryItem): string {
     if (item.quantity === 0) return 'out-of-stock';
     if (item.quantity <= item.reorderPoint) return 'low-stock';
     return 'available';
+  }
+
+  // Navigation
+  goToDashboard() {
+    this.router.navigate(['/dashboard']);
   }
 }

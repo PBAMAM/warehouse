@@ -1,4 +1,12 @@
 <div class="inventory-container">
+  <!-- Back Button -->
+  <div class="back-navigation">
+    <button class="btn btn-back" (click)="goToDashboard()">
+      <i class="fas fa-arrow-left"></i>
+      Back to Dashboard
+    </button>
+  </div>
+
   <div class="inventory-header">
     <div class="header-content">
       <h1 class="page-title">
@@ -23,6 +31,10 @@
         <button class="btn btn-outline" (click)="exportInventory()">
           <i class="fas fa-download"></i>
           Export
+        </button>
+        <button class="btn btn-secondary" (click)="createSampleData()">
+          <i class="fas fa-database"></i>
+          Create Sample Data
         </button>
       </div>
     </div>
@@ -135,7 +147,7 @@
           <tr *ngFor="let item of filteredInventory" class="inventory-row">
             <td class="product-cell">
               <div class="product-info">
-                <img [src]="item.product.imageUrl || '/assets/images/no-image.png'" 
+                <img [src]="item.product.imageUrl || 'assets/images/default-product.svg'" 
                      [alt]="item.product.name" 
                      class="product-image">
                 <div class="product-details">
@@ -206,7 +218,7 @@
     <div class="inventory-grid" *ngIf="viewMode === 'grid'">
       <div class="inventory-card" *ngFor="let item of filteredInventory">
         <div class="card-header">
-          <img [src]="item.product.imageUrl || '/assets/images/no-image.png'" 
+          <img [src]="item.product.imageUrl || 'assets/images/default-product.svg'" 
                [alt]="item.product.name" 
                class="product-image">
           <div class="product-status">
@@ -299,12 +311,17 @@
         <div class="form-row">
           <div class="form-group">
             <label for="category">Category *</label>
-            <select id="category" formControlName="category" required>
-              <option value="">Select Category</option>
-              <option *ngFor="let category of categories" [value]="category.name">
-                {{ category.name }}
-              </option>
-            </select>
+            <div class="category-input-group">
+              <select id="category" formControlName="category" required>
+                <option value="">Select Category</option>
+                <option *ngFor="let category of categories" [value]="category.name">
+                  {{ category.name }}
+                </option>
+              </select>
+              <button type="button" class="btn btn-outline btn-sm" (click)="openCategoryModal()" title="Manage Categories">
+                <i class="fas fa-cog"></i>
+              </button>
+            </div>
           </div>
           <div class="form-group">
             <label for="brand">Brand *</label>
@@ -348,6 +365,10 @@
           <label for="barcode">Barcode</label>
           <input type="text" id="barcode" formControlName="barcode">
         </div>
+        <div class="form-group">
+          <label for="imageUrl">Image URL</label>
+          <input type="url" id="imageUrl" formControlName="imageUrl" placeholder="Leave empty for default icon">
+        </div>
       </form>
     </div>
     <div class="modal-footer">
@@ -374,7 +395,7 @@
         <div class="form-group">
           <label>Product</label>
         <div class="product-info" *ngIf="selectedItem">
-          <img [src]="selectedItem.product.imageUrl || '/assets/images/no-image.png'" 
+          <img [src]="selectedItem.product.imageUrl || 'assets/images/default-product.svg'" 
                [alt]="selectedItem.product.name" 
                class="product-image">
           <div class="product-details">
@@ -413,6 +434,89 @@
       <button class="btn btn-secondary" (click)="closeStockModal()">Cancel</button>
       <button class="btn btn-primary" (click)="saveStockAdjustment()" [disabled]="stockForm.invalid">
         Save Adjustment
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Category Management Modal -->
+<div class="modal" [class.active]="showCategoryModal" *ngIf="showCategoryModal">
+  <div class="modal-backdrop" (click)="closeCategoryModal()"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>
+        <i class="fas fa-tags"></i>
+        Manage Categories
+      </h3>
+      <button class="btn btn-close" (click)="closeCategoryModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <!-- Add New Category Form -->
+      <div class="add-category-section">
+        <h4>Add New Category</h4>
+        <form [formGroup]="categoryForm" (ngSubmit)="addCategory()">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="categoryName">Category Name *</label>
+              <input 
+                type="text" 
+                id="categoryName" 
+                formControlName="name" 
+                placeholder="Enter category name"
+                required>
+            </div>
+            <div class="form-group">
+              <label for="categoryDescription">Description</label>
+              <input 
+                type="text" 
+                id="categoryDescription" 
+                formControlName="description" 
+                placeholder="Enter description (optional)">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" [disabled]="categoryForm.invalid">
+              <i class="fas fa-plus"></i>
+              Add Category
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Categories List -->
+      <div class="categories-list-section">
+        <h4>Existing Categories</h4>
+        <div class="categories-list" *ngIf="categories.length > 0">
+          <div class="category-item" *ngFor="let category of categories">
+            <div class="category-info">
+              <h5>{{ category.name }}</h5>
+              <p *ngIf="category.description">{{ category.description }}</p>
+              <small class="category-meta">
+                Created: {{ category.createdAt | date:'short' }}
+              </small>
+            </div>
+            <div class="category-actions">
+              <button class="btn btn-sm btn-outline" (click)="editCategory(category)" title="Edit">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="btn btn-sm btn-danger" (click)="deleteCategory(category)" title="Delete">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="no-categories" *ngIf="categories.length === 0">
+          <i class="fas fa-tags"></i>
+          <p>No categories found. Add your first category above.</p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeCategoryModal()">
+        <i class="fas fa-times"></i>
+        Close
       </button>
     </div>
   </div>

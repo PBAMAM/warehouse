@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import { Observable, Subject, from } from 'rxjs';
 import { takeUntil, map, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { OrderService } from '../../core/services/order.service';
@@ -68,7 +69,8 @@ export class OrdersComponent implements OnInit, OnDestroy {
     private inventoryService: InventoryService,
     private authService: AuthService,
     private notificationService: NotificationService,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private router: Router
   ) {
     this.initializeForms();
     this.initializeData();
@@ -466,5 +468,10 @@ export class OrdersComponent implements OnInit, OnDestroy {
           console.error('Error exporting orders:', error);
         }
       });
+  }
+
+  // Navigation
+  goToDashboard() {
+    this.router.navigate(['/dashboard']);
   }
 }
