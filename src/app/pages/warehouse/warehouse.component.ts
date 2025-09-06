@@ -1,9 +1,10 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { Observable, Subject, from } from 'rxjs';
 import { takeUntil, map, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { WarehouseService } from '../../core/services/warehouse.service';
+import { InventoryService } from '../../core/services/inventory.service';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { Warehouse, WarehouseZone } from '../../core/models/warehouse.model';
@@ -65,10 +66,12 @@ export class WarehouseComponent implements OnInit, OnDestroy {
 
   constructor(
     private warehouseService: WarehouseService,
+    private inventoryService: InventoryService,
     private authService: AuthService,
     private notificationService: NotificationService,
     private fb: FormBuilder,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute
   ) {
     this.initializeForms();
     this.initializeData();
@@ -77,6 +80,7 @@ export class WarehouseComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.loadData();
     this.setupFilters();
+    this.handleWarehouseNavigation();
   }
 
   ngOnDestroy() {
@@ -120,8 +124,9 @@ export class WarehouseComponent implements OnInit, OnDestroy {
   }
 
   private initializeData() {
-    this.warehouses$ = this.warehouseService.getWarehouses();
+    this.warehouses$ = this.warehouseService.getWarehousesWithStock();
     this.user$ = this.authService.getCurrentUser();
+
   }
 
   private loadData() {
@@ -475,8 +480,17 @@ export class WarehouseComponent implements OnInit, OnDestroy {
     this.router.navigate(['/dashboard']);
   }
 
-  // Add Item Modal Methods
-  openAddItemModal() {
+  private handleWarehouseNavigation() {
+    this.route.queryParams
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(params => {
+        if (params['id']) {
+           this.viewWarehouse(params['id']);
+        }
+      });
+  }
+
+   openAddItemModal() {
     this.showAddItemModal = true;
     this.clearQuickAddForm();
   }

@@ -112,7 +112,8 @@ export class InventoryComponent implements OnInit, OnDestroy {
       weight: [0, Validators.min(0)],
       description: [''],
       barcode: [''],
-      imageUrl: ['assets/images/default-product.svg']
+      imageUrl: ['assets/images/default-product.svg'],
+      warehouseId: ['', Validators.required]
     });
 
     this.stockForm = this.fb.group({
@@ -287,7 +288,8 @@ export class InventoryComponent implements OnInit, OnDestroy {
       weight: item.product.weight,
       description: item.product.description,
       barcode: item.product.barcode,
-      imageUrl: item.product.imageUrl || 'assets/images/default-product.svg'
+      imageUrl: item.product.imageUrl || 'assets/images/default-product.svg',
+      warehouseId: item.warehouseId
     });
     this.showProductModal = true;
   }
@@ -333,7 +335,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
             createdAt: new Date(),
             updatedAt: new Date()
           },
-          warehouseId: this.warehouses[0]?.id || 'default-warehouse',
+          warehouseId: productData.warehouseId,
           quantity: 0,
           reservedQuantity: 0,
           availableQuantity: 0,
@@ -456,6 +458,10 @@ export class InventoryComponent implements OnInit, OnDestroy {
   // Navigation
   goToDashboard() {
     this.router.navigate(['/dashboard']);
+  }
+
+  goToWarehouse(warehouseId: string) {
+    this.router.navigate(['/warehouse'], { queryParams: { id: warehouseId } });
   }
 
 

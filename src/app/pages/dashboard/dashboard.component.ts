@@ -56,10 +56,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.loadNotifications();
     this.setupNotificationListeners();
-    // Show welcome notification
-    this.notificationService.showInfo('Dashboard loaded successfully!', 'Welcome');
   }
 
   ngOnDestroy() {
@@ -67,46 +64,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  private loadNotifications() {
-    // Load notifications from localStorage or API
-    const savedNotifications = localStorage.getItem('warehouse-notifications');
-    if (savedNotifications) {
-      this.notifications = JSON.parse(savedNotifications).map((n: any) => ({
-        ...n,
-        timestamp: new Date(n.timestamp)
-      }));
-      this.updateUnreadCount();
-    }
-  }
 
   private setupNotificationListeners() {
     // Listen for new notifications from the notification service
     this.notificationService.notifications$
       .pipe(takeUntil(this.destroy$))
-      .subscribe((notification: any) => {
-        this.addNotification(notification);
+      .subscribe((notifications: any[]) => {
+        this.notifications = notifications;
+        this.updateUnreadCount();
       });
-  }
-
-  private addNotification(notification: Omit<Notification, 'id' | 'read' | 'timestamp'>) {
-    const newNotification: Notification = {
-      ...notification,
-      id: Date.now().toString(),
-      read: false,
-      timestamp: new Date()
-    };
-    
-    this.notifications.unshift(newNotification);
-    this.updateUnreadCount();
-    this.saveNotifications();
   }
 
   private updateUnreadCount() {
     this.unreadCount = this.notifications.filter(n => !n.read).length;
-  }
-
-  private saveNotifications() {
-    localStorage.setItem('warehouse-notifications', JSON.stringify(this.notifications));
   }
 
   toggleNotifications() {
@@ -114,22 +84,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   markAsRead(notification: Notification) {
-    notification.read = true;
-    this.updateUnreadCount();
-    this.saveNotifications();
+    this.notificationService.markAsRead(notification.id!);
   }
 
   markAllAsRead() {
-    this.notifications.forEach(n => n.read = true);
-    this.updateUnreadCount();
-    this.saveNotifications();
+    this.notificationService.markAllAsRead();
   }
 
   dismissNotification(notification: Notification, event: Event) {
     event.stopPropagation();
-    this.notifications = this.notifications.filter(n => n.id !== notification.id);
-    this.updateUnreadCount();
-    this.saveNotifications();
+    this.notificationService.removeNotification(notification.id!);
   }
 
   getNotificationIcon(type: string): string {
@@ -142,9 +106,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return icons[type as keyof typeof icons] || 'fa-bell';
   }
 
-  testNotification() {
-    this.notificationService.testNotification();
-  }
 
   getStatusColor(status: string): string {
     const colors: { [key: string]: string } = {

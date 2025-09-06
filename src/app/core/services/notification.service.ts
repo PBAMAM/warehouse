@@ -91,7 +91,7 @@ export class NotificationService {
     };
   }
 
-  // Add a new notification
+  // Add a new notification (with duplicate prevention)
   addNotification(notification: Omit<Notification, 'id' | 'timestamp' | 'read'>): void {
     const newNotification: Notification = {
       ...notification,
@@ -101,6 +101,19 @@ export class NotificationService {
     };
 
     const currentNotifications = this.notificationsSubject.value;
+    
+    // Check for duplicates (same title and message within last 5 seconds)
+    const isDuplicate = currentNotifications.some(n => 
+      n.title === newNotification.title && 
+      n.message === newNotification.message &&
+      (new Date().getTime() - n.timestamp.getTime()) < 5000
+    );
+
+    if (isDuplicate) {
+      console.log('Duplicate notification prevented:', newNotification.title);
+      return;
+    }
+
     this.notificationsSubject.next([newNotification, ...currentNotifications]);
     this.updateUnreadCount();
 
@@ -184,11 +197,6 @@ export class NotificationService {
     this.addNotification({ title, message, type: 'success' });
   }
 
-  // Show error notification
-  showError(message: string, title: string = 'Error'): void {
-    this.addNotification({ title, message, type: 'error' });
-  }
-
   // Show warning notification
   showWarning(message: string, title: string = 'Warning'): void {
     this.addNotification({ title, message, type: 'warning' });
@@ -199,8 +207,60 @@ export class NotificationService {
     this.addNotification({ title, message, type: 'info' });
   }
 
-  // Test notification system
-  testNotification(): void {
-    this.showSuccess('Notification system is working!', 'Test Notification');
+  // Show error notification (no-op to prevent error spam)
+  showError(message: string, title: string = 'Error'): void {
+    // Do nothing - errors are logged to console but not shown as notifications
+    console.error(`${title}: ${message}`);
+  }
+
+  // Real-time activity notifications
+  notifyOrderCreated(orderNumber: string, customerName: string, userId?: string): void {
+    this.addNotification({
+      title: 'New Order Created',
+      message: `Order ${orderNumber} created by ${customerName}`,
+      type: 'info',
+      userId: userId,
+      actionUrl: '/orders'
+    });
+  }
+
+  notifyOrderUpdated(orderNumber: string, status: string, userId?: string): void {
+    this.addNotification({
+      title: 'Order Updated',
+      message: `Order ${orderNumber} status changed to ${status}`,
+      type: 'info',
+      userId: userId,
+      actionUrl: '/orders'
+    });
+  }
+
+  notifyInventoryUpdated(productName: string, action: string, userId?: string): void {
+    this.addNotification({
+      title: 'Inventory Updated',
+      message: `${action} performed on ${productName}`,
+      type: 'info',
+      userId: userId,
+      actionUrl: '/inventory'
+    });
+  }
+
+  notifyStockAdjustment(productName: string, quantity: number, type: string, userId?: string): void {
+    this.addNotification({
+      title: 'Stock Adjustment',
+      message: `${type} ${quantity} units of ${productName}`,
+      type: 'warning',
+      userId: userId,
+      actionUrl: '/inventory'
+    });
+  }
+
+  notifyWarehouseUpdated(warehouseName: string, action: string, userId?: string): void {
+    this.addNotification({
+      title: 'Warehouse Updated',
+      message: `${action} performed on ${warehouseName}`,
+      type: 'info',
+      userId: userId,
+      actionUrl: '/warehouse'
+    });
   }
 }

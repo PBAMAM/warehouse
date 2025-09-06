@@ -18,12 +18,16 @@ export class AuthService {
     private firestore: AngularFirestore,
     private router: Router
   ) {
+    // Listen to auth state changes
     this.afAuth.authState.subscribe(user => {
+      console.log('Auth state changed:', user ? 'User logged in' : 'User logged out');
       if (user) {
         this.getUserData(user.uid).subscribe(userData => {
+          console.log('User data loaded:', userData);
           this.userSubject.next(userData);
         });
       } else {
+        console.log('No user, setting user to null');
         this.userSubject.next(null);
       }
     });

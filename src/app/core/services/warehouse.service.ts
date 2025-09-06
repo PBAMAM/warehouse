@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { AngularFirestore, AngularFirestoreCollection } from '@angular/fire/compat/firestore';
 import { Observable, from, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { map, catchError, switchMap } from 'rxjs/operators';
 import { Warehouse, WarehouseZone, WarehouseRack } from '../models/warehouse.model';
 import { NotificationService } from './notification.service';
 
@@ -34,6 +34,40 @@ export class WarehouseService {
         this.notificationService.showError('Failed to load warehouses', 'Error');
         console.error('Error loading warehouses:', error);
         return of([]);
+      })
+    );
+  }
+
+  // Get warehouses with calculated current stock
+  getWarehousesWithStock(): Observable<Warehouse[]> {
+    return this.getWarehouses().pipe(
+      switchMap(warehouses => {
+        if (warehouses.length === 0) {
+          return of([]);
+        }
+        
+        // Get inventory items for all warehouses
+        const inventoryQuery = this.firestore.collection('inventory').ref;
+        return from(inventoryQuery.get()).pipe(
+          map(snapshot => {
+            const inventoryItems = snapshot.docs.map(doc => doc.data() as any);
+            
+            // Calculate current stock for each warehouse
+            return warehouses.map(warehouse => {
+              const warehouseInventory = inventoryItems.filter(item => item.warehouseId === warehouse.id);
+              const currentStock = warehouseInventory.reduce((total, item) => total + (item.quantity || 0), 0);
+              
+              return {
+                ...warehouse,
+                currentStock
+              };
+            });
+          })
+        );
+      }),
+      catchError(error => {
+        console.error('Error calculating warehouse stock:', error);
+        return this.getWarehouses(); // Fallback to warehouses without stock calculation
       })
     );
   }

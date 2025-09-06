@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
 import { AngularFirestore, AngularFirestoreCollection } from '@angular/fire/compat/firestore';
 import { Observable, from, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { map, catchError, take } from 'rxjs/operators';
 import { Product, InventoryItem, StockMovement, Category } from '../models/inventory.model';
 import { NotificationService } from './notification.service';
+import { WarehouseService } from './warehouse.service';
 
 @Injectable({
   providedIn: 'root'
@@ -15,7 +16,8 @@ export class InventoryService {
 
   constructor(
     private firestore: AngularFirestore,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private warehouseService: WarehouseService
   ) {
     this.inventoryCollection = this.firestore.collection<InventoryItem>('inventory');
     this.movementsCollection = this.firestore.collection<StockMovement>('stock-movements');
@@ -30,9 +32,16 @@ export class InventoryService {
         lastUpdated: new Date()
       });
       this.notificationService.showSuccess('Inventory item created successfully', 'Success');
+      
+      // Notify administrators about inventory update
+      this.notificationService.notifyInventoryUpdated(
+        inventoryItem.product?.name || 'Unknown Product',
+        'Created',
+        inventoryItem.warehouseId
+      );
+      
       return docRef.id;
     } catch (error) {
-      this.notificationService.showError('Failed to create inventory item', 'Error');
       console.error('Error creating inventory item:', error);
       throw error;
     }
@@ -45,8 +54,14 @@ export class InventoryService {
         lastUpdated: new Date()
       });
       this.notificationService.showSuccess('Inventory item updated successfully', 'Success');
+      
+      // Notify administrators about inventory update
+      this.notificationService.notifyInventoryUpdated(
+        inventoryItem.product?.name || 'Unknown Product',
+        'Updated',
+        inventoryItem.warehouseId
+      );
     } catch (error) {
-      this.notificationService.showError('Failed to update inventory item', 'Error');
       console.error('Error updating inventory item:', error);
       throw error;
     }
@@ -57,7 +72,6 @@ export class InventoryService {
       await this.inventoryCollection.doc(id).delete();
       this.notificationService.showSuccess('Inventory item deleted successfully', 'Success');
     } catch (error) {
-      this.notificationService.showError('Failed to delete inventory item', 'Error');
       console.error('Error deleting inventory item:', error);
       throw error;
     }
@@ -405,15 +419,23 @@ export class InventoryService {
           batch.set(movementRef, movementData);
 
           // Commit the batch
-          return batch.commit();
+          return batch.commit().then(() => {
+            this.notificationService.showSuccess('Stock adjusted successfully!');
+            
+            // Notify administrators about stock adjustment
+            this.notificationService.notifyStockAdjustment(
+              currentData.product?.name || 'Unknown Product',
+              adjustmentQuantity,
+              movement.movementType || 'adjustment',
+              movement.userId
+            );
+          });
         })
         .then(() => {
-          this.notificationService.showSuccess('Stock adjusted successfully!');
           observer.next();
           observer.complete();
         })
         .catch(error => {
-          this.notificationService.showError('Failed to adjust stock');
           console.error('Error adjusting stock:', error);
           observer.error(error);
         });
@@ -455,6 +477,96 @@ export class InventoryService {
       } catch (error) {
         observer.error(error);
       }
+    });
+  }
+
+  // Temporary method to create test inventory data
+  createTestInventoryData(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // First get warehouses
+      this.warehouseService.getWarehouses().pipe(take(1)).subscribe((warehouses: any[]) => {
+        if (warehouses.length === 0) {
+          console.log('No warehouses found, cannot create test data');
+          resolve();
+          return;
+        }
+
+        const testInventoryItems = [
+          {
+            productId: 'test-product-1',
+            product: {
+              id: 'test-product-1',
+              sku: 'TEST-001',
+              name: 'Test Product 1',
+              category: 'Electronics',
+              brand: 'Test Brand',
+              unit: 'pcs',
+              unitPrice: 100,
+              costPrice: 80,
+              weight: 1.5,
+              description: 'Test product for stock calculation',
+              barcode: '123456789',
+              imageUrl: 'assets/images/default-product.svg',
+              isActive: true,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            },
+            warehouseId: warehouses[0].id,
+            quantity: 50,
+            reservedQuantity: 0,
+            availableQuantity: 50,
+            minStockLevel: 10,
+            maxStockLevel: 100,
+            reorderPoint: 20,
+            lastUpdated: new Date(),
+            location: 'A-1-1'
+          },
+          {
+            productId: 'test-product-2',
+            product: {
+              id: 'test-product-2',
+              sku: 'TEST-002',
+              name: 'Test Product 2',
+              category: 'Electronics',
+              brand: 'Test Brand',
+              unit: 'pcs',
+              unitPrice: 200,
+              costPrice: 150,
+              weight: 2.0,
+              description: 'Another test product',
+              barcode: '987654321',
+              imageUrl: 'assets/images/default-product.svg',
+              isActive: true,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            },
+            warehouseId: warehouses[0].id,
+            quantity: 25,
+            reservedQuantity: 0,
+            availableQuantity: 25,
+            minStockLevel: 5,
+            maxStockLevel: 50,
+            reorderPoint: 10,
+            lastUpdated: new Date(),
+            location: 'A-1-2'
+          }
+        ];
+
+        // Add test inventory items
+        const batch = this.firestore.firestore.batch();
+        testInventoryItems.forEach(item => {
+          const docRef = this.firestore.collection('inventory').doc().ref;
+          batch.set(docRef, item);
+        });
+
+        batch.commit().then(() => {
+          console.log('Test inventory data created successfully');
+          resolve();
+        }).catch(error => {
+          console.error('Error creating test inventory data:', error);
+          reject(error);
+        });
+      });
     });
   }
 }

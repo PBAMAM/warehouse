@@ -87,11 +87,18 @@ export class OrderService {
       console.log('Order created in Firebase with ID:', docRef.id);
       
       this.notificationService.showSuccess('Order created successfully', 'Success');
+      
+      // Notify administrators about new order
+      this.notificationService.notifyOrderCreated(
+        orderData.orderNumber, 
+        orderData.customerName,
+        orderData.customerId
+      );
+      
       return docRef.id;
     } catch (error) {
       console.error('Error creating order in service:', error);
       console.error('Error details:', error);
-      this.notificationService.showError('Failed to create order: ' + (error as Error).message, 'Error');
       throw error;
     }
   }
@@ -129,8 +136,14 @@ export class OrderService {
 
       await this.ordersCollection.doc(id).update(updateData);
       this.notificationService.showSuccess(`Order status updated to ${status}`, 'Success');
+      
+      // Notify administrators about order status change
+      this.notificationService.notifyOrderUpdated(
+        id, 
+        status,
+        updateData.assignedTo
+      );
     } catch (error) {
-      this.notificationService.showError('Failed to update order status', 'Error');
       console.error('Error updating order status:', error);
       throw error;
     }

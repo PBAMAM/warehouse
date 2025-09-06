@@ -48,10 +48,6 @@ export class LoginComponent implements OnInit {
       this.authService.signIn(email, password)
         .then(() => {
           this.notificationService.showSuccess('Welcome back!', 'Login Successful');
-          // Test notification system
-          setTimeout(() => {
-            this.notificationService.testNotification();
-          }, 2000);
           this.router.navigate(['/dashboard']);
         })
         .catch(error => {

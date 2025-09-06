@@ -956,3 +956,49 @@
     font-size: 0.9rem;
   }
 }
+
+// Warehouse link styles
+.warehouse-link {
+  background: none;
+  border: none;
+  color: #3498db;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  text-decoration: none;
+
+  &:hover {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    transform: translateY(-1px);
+  }
+
+  i {
+    font-size: 0.75rem;
+  }
+}
+
+.warehouse-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0.5rem 0;
+
+  .location {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: #666;
+    
+    i {
+      font-size: 0.625rem;
+    }
+  }
+}

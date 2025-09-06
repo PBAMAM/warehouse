@@ -154,7 +154,13 @@
             </td>
             <td>{{ item.product.sku }}</td>
             <td>{{ item.product.category }}</td>
-            <td>{{ getWarehouseName(item.warehouseId) }}</td>
+            <td>
+              <button class="warehouse-link" (click)="goToWarehouse(item.warehouseId)" 
+                      [title]="'View ' + getWarehouseName(item.warehouseId) + ' details'">
+                <i class="fas fa-warehouse"></i>
+                {{ getWarehouseName(item.warehouseId) }}
+              </button>
+            </td>
             <td>{{ item.location }}</td>
             <td class="stock-cell">
               <div class="stock-info">
@@ -230,6 +236,17 @@
           <h4 class="product-name">{{ item.product.name }}</h4>
           <p class="product-brand">{{ item.product.brand }}</p>
           <p class="product-sku">SKU: {{ item.product.sku }}</p>
+          <div class="warehouse-info">
+            <button class="warehouse-link" (click)="goToWarehouse(item.warehouseId)" 
+                    [title]="'View ' + getWarehouseName(item.warehouseId) + ' details'">
+              <i class="fas fa-warehouse"></i>
+              {{ getWarehouseName(item.warehouseId) }}
+            </button>
+            <span class="location" *ngIf="item.location">
+              <i class="fas fa-map-marker-alt"></i>
+              {{ item.location }}
+            </span>
+          </div>
           <div class="stock-info">
             <div class="stock-quantity" 
                  [class.low-stock]="item.quantity <= item.reorderPoint"
@@ -364,6 +381,15 @@
         <div class="form-group">
           <label for="imageUrl">Image URL</label>
           <input type="url" id="imageUrl" formControlName="imageUrl" placeholder="Leave empty for default icon">
+        </div>
+        <div class="form-group">
+          <label for="warehouseId">Warehouse *</label>
+          <select id="warehouseId" formControlName="warehouseId" required>
+            <option value="">Select Warehouse</option>
+            <option *ngFor="let warehouse of warehouses" [value]="warehouse.id">
+              {{ warehouse.name }}
+            </option>
+          </select>
         </div>
       </form>
     </div>
