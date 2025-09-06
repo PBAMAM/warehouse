@@ -38,6 +38,7 @@ export class AuthService {
           ...userData,
           email: result.user.email!,
           uid: result.user.uid,
+          role: userData.role || 'employee',
           createdAt: new Date(),
           lastLoginAt: new Date()
         });

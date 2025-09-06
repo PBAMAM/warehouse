@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { AngularFireMessaging } from '@angular/fire/compat/messaging';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
-import { take, switchMap } from 'rxjs/operators';
+import { map, take, switchMap } from 'rxjs/operators';
 
 export interface Notification {
   id?: string;
@@ -36,7 +36,30 @@ export class NotificationService {
   // Request notification permission
   private async requestPermission(): Promise<void> {
     try {
-      await this.afMessaging.requestToken.toPromise();
+      // Check if service worker is supported
+      if ('serviceWorker' in navigator) {
+        try {
+          // Register the service worker
+          const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+          console.log('Service Worker registered:', registration);
+        } catch (swError) {
+          console.warn('Service Worker registration failed:', swError);
+          // Continue without service worker for now
+        }
+      }
+      
+      // Request notification permission
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        try {
+          const token = await this.afMessaging.requestToken.toPromise();
+          console.log('FCM Token:', token);
+        } catch (tokenError) {
+          console.warn('FCM Token request failed:', tokenError);
+        }
+      } else {
+        console.log('Notification permission denied');
+      }
     } catch (error) {
       console.error('Unable to get permission to notify.', error);
     }
@@ -48,6 +71,9 @@ export class NotificationService {
       (payload) => {
         console.log('Message received:', payload);
         this.showNotification(payload);
+      },
+      (error) => {
+        console.error('Error receiving messages:', error);
       }
     );
   }
@@ -171,5 +197,10 @@ export class NotificationService {
   // Show info notification
   showInfo(message: string, title: string = 'Info'): void {
     this.addNotification({ title, message, type: 'info' });
+  }
+
+  // Test notification system
+  testNotification(): void {
+    this.showSuccess('Notification system is working!', 'Test Notification');
   }
 }

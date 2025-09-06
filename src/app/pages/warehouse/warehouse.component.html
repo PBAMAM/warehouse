@@ -1,0 +1,743 @@
+<div class="warehouse-container">
+    <!-- Back Button -->
+    <div class="back-navigation">
+        <button class="btn btn-back" (click)="goToDashboard()">
+            <i class="fas fa-arrow-left"></i>
+            Back to Dashboard
+        </button>
+    </div>
+
+    <div class="warehouse-header">
+        <div class="header-content">
+            <h1 class="page-title">
+                <i class="fas fa-warehouse"></i>
+                Warehouse Management
+            </h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" (click)="openAddWarehouseModal()" *ngIf="canManageWarehouses()">
+                    <i class="fas fa-plus"></i>
+                    Add Warehouse
+                </button>
+                <button class="btn btn-outline" (click)="exportWarehouses()">
+                    <i class="fas fa-download"></i>
+                    Export
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Item Button -->
+    <div class="add-item-button-section" *ngIf="canManageWarehouses()">
+        <button class="btn btn-add-item" (click)="openAddItemModal()">
+            <i class="fas fa-plus-circle"></i>
+            Quick Add Item
+        </button>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="warehouse-filters">
+        <div class="filters-row">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Search warehouses..." [(ngModel)]="searchTerm"
+                    (input)="onSearchChange()">
+            </div>
+            <div class="filter-group">
+                <select [(ngModel)]="statusFilter" (change)="onFilterChange()">
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+                <select [(ngModel)]="capacityFilter" (change)="onFilterChange()">
+                    <option value="all">All Capacity</option>
+                    <option value="low">Low Capacity</option>
+                    <option value="medium">Medium Capacity</option>
+                    <option value="high">High Capacity</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Warehouse Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-warehouse"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ totalWarehouses }}</h3>
+                <p>Total Warehouses</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ activeWarehouses }}</h3>
+                <p>Active Warehouses</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ lowCapacityWarehouses }}</h3>
+                <p>Low Capacity</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-boxes"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ totalCapacity }}</h3>
+                <p>Total Capacity</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Warehouse Table -->
+    <div class="warehouse-table-container">
+        <div class="table-header">
+            <h3>Warehouses</h3>
+            <div class="table-actions">
+                <button class="btn btn-sm btn-outline" (click)="toggleViewMode()">
+                    <i class="fas" [class.fa-th]="viewMode === 'grid'" [class.fa-list]="viewMode === 'list'"></i>
+                    {{ viewMode === 'grid' ? 'List View' : 'Grid View' }}
+                </button>
+            </div>
+        </div>
+
+        <!-- List View -->
+        <div class="table-responsive" *ngIf="viewMode === 'list'">
+            <table class="warehouse-table">
+                <thead>
+                    <tr>
+                        <th>Warehouse</th>
+                        <th>Location</th>
+                        <th>Manager</th>
+                        <th>Capacity</th>
+                        <th>Current Stock</th>
+                        <th>Utilization</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let warehouse of filteredWarehouses" class="warehouse-row">
+                        <td class="warehouse-cell">
+                            <div class="warehouse-info">
+                                <div class="warehouse-details">
+                                    <h4>{{ warehouse.name }}</h4>
+                                    <p>{{ warehouse.description || 'No description available' }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="location-info">
+                                <p><strong>{{ warehouse.city }}, {{ warehouse.state }}</strong></p>
+                                <p>{{ warehouse.address }}</p>
+                                <p>{{ warehouse.zipCode }}, {{ warehouse.country }}</p>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="manager-info">
+                                <p><strong>{{ warehouse.managerName }}</strong></p>
+                                <p>{{ warehouse.contactEmail || 'No email' }}</p>
+                                <p>{{ warehouse.contactPhone || 'No phone' }}</p>
+                            </div>
+                        </td>
+                        <td class="capacity-cell">
+                            <div class="capacity-info">
+                                <span class="capacity-value">{{ warehouse.capacity | number }}</span>
+                                <small class="capacity-unit">units</small>
+                            </div>
+                        </td>
+                        <td class="stock-cell">
+                            <div class="stock-info">
+                                <span class="stock-value">{{ warehouse.currentStock | number }}</span>
+                                <small class="stock-unit">units</small>
+                            </div>
+                        </td>
+                        <td class="utilization-cell">
+                            <div class="utilization-bar">
+                                <div class="utilization-fill" [style.width.%]="getUtilizationPercentage(warehouse)"
+                                    [class.low]="getUtilizationPercentage(warehouse) < 50"
+                                    [class.medium]="getUtilizationPercentage(warehouse) >= 50 && getUtilizationPercentage(warehouse) < 80"
+                                    [class.high]="getUtilizationPercentage(warehouse) >= 80">
+                                </div>
+                                <span class="utilization-text">{{ getUtilizationPercentage(warehouse) | number:'1.0-1'
+                                    }}%</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="status-badge" [class.active]="warehouse.isActive"
+                                [class.inactive]="!warehouse.isActive">
+                                {{ warehouse.isActive ? 'Active' : 'Inactive' }}
+                            </span>
+                        </td>
+                        <td class="actions-cell">
+                            <div class="action-buttons">
+                                <button class="btn btn-sm btn-outline" (click)="viewWarehouse(warehouse)"
+                                    title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-primary" (click)="editWarehouse(warehouse)"
+                                    *ngIf="canManageWarehouses()" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-info" (click)="manageZones(warehouse)"
+                                    *ngIf="canManageWarehouses()" title="Manage Zones">
+                                    <i class="fas fa-layer-group"></i>
+                                </button>
+                                <button class="btn btn-sm btn-warning" (click)="toggleWarehouseStatus(warehouse)"
+                                    *ngIf="canManageWarehouses()" title="Toggle Status">
+                                    <i class="fas" [class.fa-play]="!warehouse.isActive"
+                                        [class.fa-pause]="warehouse.isActive"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" (click)="deleteWarehouse(warehouse)"
+                                    *ngIf="canManageWarehouses()" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Grid View -->
+        <div class="warehouse-grid" *ngIf="viewMode === 'grid'">
+            <div class="warehouse-card" *ngFor="let warehouse of filteredWarehouses">
+                <div class="card-header">
+                    <div class="warehouse-status">
+                        <span class="status-badge" [class.active]="warehouse.isActive"
+                            [class.inactive]="!warehouse.isActive">
+                            {{ warehouse.isActive ? 'Active' : 'Inactive' }}
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <h4 class="warehouse-name">{{ warehouse.name }}</h4>
+                    <p class="warehouse-description">{{ warehouse.description || 'No description available' }}</p>
+
+                    <div class="location-section">
+                        <h5><i class="fas fa-map-marker-alt"></i> Location</h5>
+                        <p>{{ warehouse.city }}, {{ warehouse.state }}</p>
+                        <p>{{ warehouse.address }}</p>
+                    </div>
+
+                    <div class="manager-section">
+                        <h5><i class="fas fa-user"></i> Manager</h5>
+                        <p><strong>{{ warehouse.managerName }}</strong></p>
+                        <p>{{ warehouse.contactEmail || 'No email' }}</p>
+                    </div>
+
+                    <div class="capacity-section">
+                        <h5><i class="fas fa-chart-bar"></i> Capacity</h5>
+                        <div class="capacity-info">
+                            <div class="capacity-item">
+                                <span class="label">Total:</span>
+                                <span class="value">{{ warehouse.capacity | number }} units</span>
+                            </div>
+                            <div class="capacity-item">
+                                <span class="label">Used:</span>
+                                <span class="value">{{ warehouse.currentStock | number }} units</span>
+                            </div>
+                            <div class="utilization-bar">
+                                <div class="utilization-fill" [style.width.%]="getUtilizationPercentage(warehouse)"
+                                    [class.low]="getUtilizationPercentage(warehouse) < 50"
+                                    [class.medium]="getUtilizationPercentage(warehouse) >= 50 && getUtilizationPercentage(warehouse) < 80"
+                                    [class.high]="getUtilizationPercentage(warehouse) >= 80">
+                                </div>
+                                <span class="utilization-text">{{ getUtilizationPercentage(warehouse) | number:'1.0-1'
+                                    }}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="action-buttons">
+                        <button class="btn btn-sm btn-outline" (click)="viewWarehouse(warehouse)">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-primary" (click)="editWarehouse(warehouse)"
+                            *ngIf="canManageWarehouses()">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-info" (click)="manageZones(warehouse)"
+                            *ngIf="canManageWarehouses()">
+                            <i class="fas fa-layer-group"></i>
+                        </button>
+                        <button class="btn btn-sm btn-warning" (click)="toggleWarehouseStatus(warehouse)"
+                            *ngIf="canManageWarehouses()">
+                            <i class="fas" [class.fa-play]="!warehouse.isActive"
+                                [class.fa-pause]="warehouse.isActive"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" (click)="deleteWarehouse(warehouse)"
+                            *ngIf="canManageWarehouses()">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-container" *ngIf="totalPages > 1">
+            <app-pagination [currentPage]="currentPage" [totalPages]="totalPages" [pageSize]="pageSize"
+                (pageChange)="onPageChange($event)">
+            </app-pagination>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Warehouse Modal -->
+<div class="modal" [class.active]="showWarehouseModal" *ngIf="showWarehouseModal">
+    <div class="modal-backdrop" (click)="closeWarehouseModal()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>{{ editingWarehouse ? 'Edit Warehouse' : 'Add New Warehouse' }}</h3>
+            <button class="btn btn-close" (click)="closeWarehouseModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form [formGroup]="warehouseForm" (ngSubmit)="saveWarehouse()">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="name">Warehouse Name *</label>
+                        <input type="text" id="name" formControlName="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="capacity">Capacity *</label>
+                        <input type="number" id="capacity" formControlName="capacity" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="managerName">Manager Name *</label>
+                        <input type="text" id="managerName" formControlName="managerName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="managerId">Manager ID *</label>
+                        <input type="text" id="managerId" formControlName="managerId" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" formControlName="description" rows="3"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="address">Address *</label>
+                        <input type="text" id="address" formControlName="address" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="city">City *</label>
+                        <input type="text" id="city" formControlName="city" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="state">State *</label>
+                        <input type="text" id="state" formControlName="state" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="zipCode">ZIP Code *</label>
+                        <input type="text" id="zipCode" formControlName="zipCode" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="country">Country *</label>
+                        <input type="text" id="country" formControlName="country" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="contactPhone">Contact Phone</label>
+                        <input type="tel" id="contactPhone" formControlName="contactPhone">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="contactEmail">Contact Email</label>
+                    <input type="email" id="contactEmail" formControlName="contactEmail">
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" formControlName="isActive">
+                        <span class="checkmark"></span>
+                        Active
+                    </label>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" (click)="closeWarehouseModal()">Cancel</button>
+            <button class="btn btn-primary" (click)="saveWarehouse()" [disabled]="warehouseForm.invalid">
+                {{ editingWarehouse ? 'Update' : 'Create' }}
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Zone Management Modal -->
+<div class="modal" [class.active]="showZoneModal" *ngIf="showZoneModal">
+    <div class="modal-backdrop" (click)="closeZoneModal()"></div>
+    <div class="modal-content large">
+        <div class="modal-header">
+            <h3>Manage Zones - {{ selectedWarehouse?.name }}</h3>
+            <button class="btn btn-close" (click)="closeZoneModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="zones-header">
+                <button class="btn btn-primary" (click)="openAddZoneModal()">
+                    <i class="fas fa-plus"></i>
+                    Add Zone
+                </button>
+            </div>
+
+            <div class="zones-grid" *ngIf="zones.length > 0">
+                <div class="zone-card" *ngFor="let zone of zones">
+                    <div class="zone-header">
+                        <h4>{{ zone.name }}</h4>
+                        <div class="zone-actions">
+                            <button class="btn btn-sm btn-outline" (click)="editZone(zone)">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" (click)="deleteZone(zone)">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="zone-body">
+                        <p>{{ zone.description || 'No description' }}</p>
+                        <div class="zone-stats">
+                            <div class="stat">
+                                <span class="label">Capacity:</span>
+                                <span class="value">{{ zone.capacity }} units</span>
+                            </div>
+                            <div class="stat">
+                                <span class="label">Current Stock:</span>
+                                <span class="value">{{ zone.currentStock }} units</span>
+                            </div>
+                            <div class="utilization-bar">
+                                <div class="utilization-fill" [style.width.%]="getZoneUtilization(zone)">
+                                </div>
+                                <span class="utilization-text">{{ getZoneUtilization(zone) | number:'1.0-1' }}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="no-zones" *ngIf="zones.length === 0">
+                <i class="fas fa-layer-group"></i>
+                <p>No zones found for this warehouse</p>
+                <button class="btn btn-primary" (click)="openAddZoneModal()">
+                    <i class="fas fa-plus"></i>
+                    Add First Zone
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Zone Modal -->
+<div class="modal" [class.active]="showAddZoneModal" *ngIf="showAddZoneModal">
+    <div class="modal-backdrop" (click)="closeAddZoneModal()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>{{ editingZone ? 'Edit Zone' : 'Add New Zone' }}</h3>
+            <button class="btn btn-close" (click)="closeAddZoneModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form [formGroup]="zoneForm" (ngSubmit)="saveZone()">
+                <div class="form-group">
+                    <label for="zoneName">Zone Name *</label>
+                    <input type="text" id="zoneName" formControlName="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="zoneDescription">Description</label>
+                    <textarea id="zoneDescription" formControlName="description" rows="3"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="zoneCapacity">Capacity *</label>
+                        <input type="number" id="zoneCapacity" formControlName="capacity" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="zoneTemperature">Temperature (°C)</label>
+                        <input type="number" id="zoneTemperature" formControlName="temperature">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="zoneHumidity">Humidity (%)</label>
+                    <input type="number" id="zoneHumidity" formControlName="humidity" min="0" max="100">
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" formControlName="isActive">
+                        <span class="checkmark"></span>
+                        Active
+                    </label>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" (click)="closeAddZoneModal()">Cancel</button>
+            <button class="btn btn-primary" (click)="saveZone()" [disabled]="zoneForm.invalid">
+                {{ editingZone ? 'Update' : 'Create' }}
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Item Modal -->
+<div class="modal" [class.active]="showAddItemModal" *ngIf="showAddItemModal">
+  <div class="modal-backdrop" (click)="closeAddItemModal()"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>
+        <i class="fas fa-plus-circle"></i>
+        Quick Add Item
+      </h3>
+      <button class="btn btn-close" (click)="closeAddItemModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form [formGroup]="quickAddItemForm" (ngSubmit)="addQuickItem()">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="itemName">Item Name *</label>
+            <input 
+              type="text" 
+              id="itemName" 
+              formControlName="name" 
+              placeholder="Enter item name"
+              required>
+          </div>
+          <div class="form-group">
+            <label for="itemQuantity">Quantity *</label>
+            <input 
+              type="number" 
+              id="itemQuantity" 
+              formControlName="quantity" 
+              placeholder="Enter quantity"
+              min="1"
+              required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="itemCategory">Category</label>
+            <select id="itemCategory" formControlName="category">
+              <option value="">Select Category</option>
+              <option value="electronics">Electronics</option>
+              <option value="clothing">Clothing</option>
+              <option value="books">Books</option>
+              <option value="furniture">Furniture</option>
+              <option value="tools">Tools</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="itemPrice">Price ($)</label>
+            <input 
+              type="number" 
+              id="itemPrice" 
+              formControlName="price" 
+              placeholder="0.00"
+              step="0.01"
+              min="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="itemDescription">Description</label>
+          <textarea 
+            id="itemDescription" 
+            formControlName="description" 
+            placeholder="Enter item description (optional)"
+            rows="3"></textarea>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeAddItemModal()">
+        <i class="fas fa-times"></i>
+        Cancel
+      </button>
+      <button class="btn btn-success" (click)="addQuickItem()" [disabled]="quickAddItemForm.invalid">
+        <i class="fas fa-plus"></i>
+        Add Item
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Warehouse Detail Modal -->
+<div class="modal" [class.active]="showWarehouseDetailModal" *ngIf="showWarehouseDetailModal">
+  <div class="modal-backdrop" (click)="closeWarehouseDetailModal()"></div>
+  <div class="modal-content large">
+    <div class="modal-header">
+      <h3>
+        <i class="fas fa-warehouse"></i>
+        {{ detailWarehouse?.name }} - Details
+      </h3>
+      <button class="btn btn-close" (click)="closeWarehouseDetailModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="warehouse-detail-content" *ngIf="detailWarehouse">
+        <!-- Warehouse Overview -->
+        <div class="detail-section">
+          <h4><i class="fas fa-info-circle"></i> Overview</h4>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <label>Status</label>
+              <span class="status-badge" [class.active]="detailWarehouse.isActive" [class.inactive]="!detailWarehouse.isActive">
+                {{ detailWarehouse.isActive ? 'Active' : 'Inactive' }}
+              </span>
+            </div>
+            <div class="detail-item">
+              <label>Capacity</label>
+              <span class="value">{{ detailWarehouse.capacity | number }} units</span>
+            </div>
+            <div class="detail-item">
+              <label>Current Stock</label>
+              <span class="value">{{ detailWarehouse.currentStock | number }} units</span>
+            </div>
+            <div class="detail-item">
+              <label>Utilization</label>
+              <div class="utilization-display">
+                <div class="utilization-bar">
+                  <div class="utilization-fill" 
+                       [style.width.%]="getUtilizationPercentage(detailWarehouse)"
+                       [class.low]="getUtilizationPercentage(detailWarehouse) < 50"
+                       [class.medium]="getUtilizationPercentage(detailWarehouse) >= 50 && getUtilizationPercentage(detailWarehouse) < 80"
+                       [class.high]="getUtilizationPercentage(detailWarehouse) >= 80">
+                  </div>
+                  <span class="utilization-text">{{ getUtilizationPercentage(detailWarehouse) | number:'1.0-1' }}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div class="detail-section" *ngIf="detailWarehouse.description">
+          <h4><i class="fas fa-align-left"></i> Description</h4>
+          <p class="description-text">{{ detailWarehouse.description }}</p>
+        </div>
+
+        <!-- Location Information -->
+        <div class="detail-section">
+          <h4><i class="fas fa-map-marker-alt"></i> Location</h4>
+          <div class="location-details">
+            <div class="address-block">
+              <strong>{{ detailWarehouse.address }}</strong><br>
+              {{ detailWarehouse.city }}, {{ detailWarehouse.state }} {{ detailWarehouse.zipCode }}<br>
+              {{ detailWarehouse.country }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Manager Information -->
+        <div class="detail-section">
+          <h4><i class="fas fa-user-tie"></i> Manager</h4>
+          <div class="manager-details">
+            <div class="manager-info">
+              <div class="manager-name">{{ detailWarehouse.managerName }}</div>
+              <div class="manager-id">ID: {{ detailWarehouse.managerId }}</div>
+              <div class="contact-info" *ngIf="detailWarehouse.contactEmail">
+                <i class="fas fa-envelope"></i> {{ detailWarehouse.contactEmail }}
+              </div>
+              <div class="contact-info" *ngIf="detailWarehouse.contactPhone">
+                <i class="fas fa-phone"></i> {{ detailWarehouse.contactPhone }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Warehouse Statistics -->
+        <div class="detail-section">
+          <h4><i class="fas fa-chart-bar"></i> Statistics</h4>
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-icon">
+                <i class="fas fa-boxes"></i>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">{{ detailWarehouse.capacity | number }}</div>
+                <div class="stat-label">Total Capacity</div>
+              </div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-icon">
+                <i class="fas fa-warehouse"></i>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">{{ detailWarehouse.currentStock | number }}</div>
+                <div class="stat-label">Current Stock</div>
+              </div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-icon">
+                <i class="fas fa-chart-pie"></i>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">{{ getUtilizationPercentage(detailWarehouse) | number:'1.0-1' }}%</div>
+                <div class="stat-label">Utilization</div>
+              </div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-icon">
+                <i class="fas fa-calculator"></i>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">{{ (detailWarehouse.capacity - detailWarehouse.currentStock) | number }}</div>
+                <div class="stat-label">Available Space</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="detail-section">
+          <h4><i class="fas fa-bolt"></i> Quick Actions</h4>
+          <div class="action-buttons">
+            <button class="btn btn-primary" (click)="editWarehouse(detailWarehouse)" *ngIf="canManageWarehouses()">
+              <i class="fas fa-edit"></i>
+              Edit Warehouse
+            </button>
+            <button class="btn btn-info" (click)="manageZones(detailWarehouse)" *ngIf="canManageWarehouses()">
+              <i class="fas fa-layer-group"></i>
+              Manage Zones
+            </button>
+            <button class="btn btn-warning" (click)="toggleWarehouseStatus(detailWarehouse)" *ngIf="canManageWarehouses()">
+              <i class="fas" [class.fa-play]="!detailWarehouse.isActive" [class.fa-pause]="detailWarehouse.isActive"></i>
+              {{ detailWarehouse.isActive ? 'Deactivate' : 'Activate' }}
+            </button>
+            <button class="btn btn-danger" (click)="deleteWarehouse(detailWarehouse)" *ngIf="canManageWarehouses()">
+              <i class="fas fa-trash"></i>
+              Delete Warehouse
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeWarehouseDetailModal()">
+        <i class="fas fa-times"></i>
+        Close
+      </button>
+    </div>
+  </div>
+</div>

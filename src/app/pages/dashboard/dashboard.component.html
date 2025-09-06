@@ -1,0 +1,225 @@
+<div class="dashboard">
+  <div class="dashboard-header">
+    <h1>Warehouse Management Dashboard</h1>
+    <div class="header-actions">
+      <!-- Notification Bell -->
+      <div class="notification-container">
+        <button class="notification-bell" (click)="toggleNotifications()" [class.has-notifications]="unreadCount > 0">
+          <i class="fas fa-bell"></i>
+          <span class="notification-count" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
+        </button>
+        
+        <!-- Notification Dropdown -->
+        <div class="notification-dropdown" [class.active]="showNotifications">
+          <div class="notification-header">
+            <h4>Notifications</h4>
+            <button class="btn btn-sm btn-outline" (click)="markAllAsRead()" *ngIf="unreadCount > 0">
+              Mark All Read
+            </button>
+          </div>
+          <div class="notification-list">
+            <div class="notification-item" 
+                 *ngFor="let notification of notifications" 
+                 [class.unread]="!notification.read"
+                 (click)="markAsRead(notification)">
+              <div class="notification-icon">
+                <i class="fas" [class]="getNotificationIcon(notification.type)"></i>
+              </div>
+              <div class="notification-content">
+                <h5>{{ notification.title }}</h5>
+                <p>{{ notification.message }}</p>
+                <span class="notification-time">{{ notification.timestamp | timeAgo }}</span>
+              </div>
+              <div class="notification-actions">
+                <button class="btn btn-sm btn-outline" (click)="dismissNotification(notification, $event)">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+            <div class="no-notifications" *ngIf="notifications.length === 0">
+              <i class="fas fa-bell-slash"></i>
+              <p>No notifications</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Info -->
+      <div class="user-info" *ngIf="user$ | async as user">
+        <div class="user-details">
+          <span class="welcome-text">Welcome, {{ user.displayName || user.email }}!</span>
+          <span class="user-role">{{ user.role | titlecase }}</span>
+        </div>
+        <div class="user-actions">
+          <button class="btn btn-sm btn-outline" (click)="testNotification()">
+            <i class="fas fa-bell"></i>
+            Test
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="dashboard-content">
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+      <div class="stat-card" *ngIf="inventoryStats$ | async as stats">
+        <div class="stat-icon">
+          <i class="fas fa-boxes"></i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ stats.totalItems || 0 }}</h3>
+          <p>Total Items</p>
+        </div>
+      </div>
+      
+      <div class="stat-card" *ngIf="inventoryStats$ | async as stats">
+        <div class="stat-icon">
+          <i class="fas fa-dollar-sign"></i>
+        </div>
+        <div class="stat-content">
+          <h3>${{ (stats.totalValue || 0) | number:'1.2-2' }}</h3>
+          <p>Total Value</p>
+        </div>
+      </div>
+      
+      <div class="stat-card" *ngIf="orderStats$ | async as stats">
+        <div class="stat-icon">
+          <i class="fas fa-shopping-cart"></i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ stats.totalOrders || 0 }}</h3>
+          <p>Total Orders</p>
+        </div>
+      </div>
+      
+      <div class="stat-card" *ngIf="orderStats$ | async as stats">
+        <div class="stat-icon">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ stats.pendingOrders || 0 }}</h3>
+          <p>Pending Orders</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="main-grid">
+      <!-- Warehouses Section -->
+      <div class="card">
+        <div class="card-header">
+          <h3><i class="fas fa-warehouse"></i> Warehouses</h3>
+        </div>
+        <div class="card-content">
+          <div class="warehouse-list" *ngIf="warehouses$ | async as warehouses">
+            <div class="warehouse-item" *ngFor="let warehouse of warehouses">
+              <div class="warehouse-info">
+                <h4>{{ warehouse.name }}</h4>
+                <p>{{ warehouse.location }}</p>
+                <div class="warehouse-stats">
+                  <span class="stat">Capacity: {{ warehouse.capacity }}</span>
+                  <span class="stat">Stock: {{ warehouse.currentStock }}</span>
+                </div>
+              </div>
+              <div class="warehouse-status">
+                <span class="status-badge" [class.active]="warehouse.isActive">
+                  {{ warehouse.isActive ? 'Active' : 'Inactive' }}
+                </span>
+              </div>
+            </div>
+            <div class="empty-state" *ngIf="warehouses.length === 0">
+              <i class="fas fa-warehouse"></i>
+              <p>No warehouses found</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Low Stock Items -->
+      <div class="card">
+        <div class="card-header">
+          <h3><i class="fas fa-exclamation-triangle"></i> Low Stock Items</h3>
+        </div>
+        <div class="card-content">
+          <div class="low-stock-list" *ngIf="lowStockItems$ | async as items">
+            <div class="low-stock-item" *ngFor="let item of items">
+              <div class="item-info">
+                <h4>{{ item.product.name }}</h4>
+                <p>SKU: {{ item.product.sku }}</p>
+                <div class="stock-level">
+                  <span class="current-stock">{{ item.quantity }}</span>
+                  <span class="reorder-point">Reorder: {{ item.reorderPoint }}</span>
+                </div>
+              </div>
+              <div class="stock-status">
+                <span class="status-badge urgent">Low Stock</span>
+              </div>
+            </div>
+            <div class="empty-state" *ngIf="items.length === 0">
+              <i class="fas fa-check-circle"></i>
+              <p>All items are well stocked</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Orders -->
+      <div class="card">
+        <div class="card-header">
+          <h3><i class="fas fa-shopping-cart"></i> Recent Orders</h3>
+        </div>
+        <div class="card-content">
+          <div class="orders-list" *ngIf="recentOrders$ | async as orders">
+            <div class="order-item" *ngFor="let order of orders">
+              <div class="order-info">
+                <h4>{{ order.orderNumber }}</h4>
+                <p>{{ order.customerName }}</p>
+                <p class="order-amount">${{ order.totalAmount | number:'1.2-2' }}</p>
+              </div>
+              <div class="order-status">
+                <span class="status-badge" [class]="getStatusColor(order.status)">
+                  {{ order.status | titlecase }}
+                </span>
+                <span class="priority-badge" [class]="getPriorityColor(order.priority)">
+                  {{ order.priority | titlecase }}
+                </span>
+              </div>
+            </div>
+            <div class="empty-state" *ngIf="orders.length === 0">
+              <i class="fas fa-shopping-cart"></i>
+              <p>No recent orders</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="card">
+        <div class="card-header">
+          <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+        </div>
+        <div class="card-content">
+          <div class="quick-actions">
+            <button class="action-btn" routerLink="/warehouse">
+              <i class="fas fa-warehouse"></i>
+              <span>Manage Warehouses</span>
+            </button>
+            <button class="action-btn" routerLink="/inventory">
+              <i class="fas fa-boxes"></i>
+              <span>View Inventory</span>
+            </button>
+            <button class="action-btn" routerLink="/orders">
+              <i class="fas fa-shopping-cart"></i>
+              <span>Process Orders</span>
+            </button>
+            <button class="action-btn" routerLink="/reports">
+              <i class="fas fa-chart-bar"></i>
+              <span>View Reports</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

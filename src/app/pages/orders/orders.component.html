@@ -1,0 +1,526 @@
+<div class="orders-container">
+  <div class="orders-header">
+    <div class="header-content">
+      <h1 class="page-title">
+        <i class="fas fa-shopping-cart"></i>
+        Orders Management
+      </h1>
+      <div class="header-actions">
+        <button 
+          class="btn btn-primary" 
+          (click)="openAddOrderModal()"
+          *ngIf="canManageOrders()">
+          <i class="fas fa-plus"></i>
+          Create Order
+        </button>
+        <button class="btn btn-outline" (click)="exportOrders()">
+          <i class="fas fa-download"></i>
+          Export
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters and Search -->
+  <div class="orders-filters">
+    <div class="filters-row">
+      <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input 
+          type="text" 
+          placeholder="Search orders..." 
+          [(ngModel)]="searchTerm"
+          (input)="onSearchChange()">
+      </div>
+      <div class="filter-group">
+        <select [(ngModel)]="statusFilter" (change)="onFilterChange()">
+          <option value="all">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="processing">Processing</option>
+          <option value="picked">Picked</option>
+          <option value="packed">Packed</option>
+          <option value="shipped">Shipped</option>
+          <option value="delivered">Delivered</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <select [(ngModel)]="priorityFilter" (change)="onFilterChange()">
+          <option value="all">All Priority</option>
+          <option value="low">Low</option>
+          <option value="normal">Normal</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+        <select [(ngModel)]="dateFilter" (change)="onFilterChange()">
+          <option value="all">All Time</option>
+          <option value="today">Today</option>
+          <option value="week">This Week</option>
+          <option value="month">This Month</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Orders Stats Cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-shopping-cart"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ totalOrders }}</h3>
+        <p>Total Orders</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-clock"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ pendingOrders }}</h3>
+        <p>Pending Orders</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-truck"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ shippedOrders }}</h3>
+        <p>Shipped Orders</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-dollar-sign"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ totalRevenue | currency }}</h3>
+        <p>Total Revenue</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Orders Table -->
+  <div class="orders-table-container">
+    <div class="table-header">
+      <h3>Orders</h3>
+      <div class="table-actions">
+        <button class="btn btn-sm btn-outline" (click)="toggleViewMode()">
+          <i class="fas" [class.fa-th]="viewMode === 'grid'" [class.fa-list]="viewMode === 'list'"></i>
+          {{ viewMode === 'grid' ? 'List View' : 'Grid View' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- List View -->
+    <div class="table-responsive" *ngIf="viewMode === 'list'">
+      <table class="orders-table">
+        <thead>
+          <tr>
+            <th>Order #</th>
+            <th>Customer</th>
+            <th>Items</th>
+            <th>Total</th>
+            <th>Status</th>
+            <th>Priority</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let order of filteredOrders" class="order-row">
+            <td class="order-number">
+              <div class="order-info">
+                <strong>{{ order.orderNumber }}</strong>
+                <small>{{ order.trackingNumber || 'No tracking' }}</small>
+              </div>
+            </td>
+            <td class="customer-cell">
+              <div class="customer-info">
+                <h4>{{ order.customerName }}</h4>
+                <p>{{ order.customerEmail }}</p>
+                <p>{{ order.customerPhone }}</p>
+              </div>
+            </td>
+            <td class="items-cell">
+              <div class="items-info">
+                <span class="items-count">{{ order.items.length }} items</span>
+                <div class="items-preview">
+                  <span *ngFor="let item of order.items.slice(0, 2)" class="item-tag">
+                    {{ item.product.name }} ({{ item.quantity }})
+                  </span>
+                  <span *ngIf="order.items.length > 2" class="more-items">
+                    +{{ order.items.length - 2 }} more
+                  </span>
+                </div>
+              </div>
+            </td>
+            <td class="total-cell">
+              <div class="total-info">
+                <span class="total-amount">{{ order.totalAmount | currency }}</span>
+                <small class="subtotal">{{ order.subtotal | currency }} + {{ order.taxAmount | currency }} tax</small>
+              </div>
+            </td>
+            <td>
+              <span class="status-badge" 
+                    [class]="getStatusClass(order.status)">
+                {{ order.status | titlecase }}
+              </span>
+            </td>
+            <td>
+              <span class="priority-badge" 
+                    [class]="getPriorityClass(order.priority)">
+                {{ order.priority | titlecase }}
+              </span>
+            </td>
+            <td class="date-cell">
+              <div class="date-info">
+                <span class="created-date">{{ order.createdAt | date:'short' }}</span>
+                <small class="expected-delivery" *ngIf="order.expectedDeliveryDate">
+                  Expected: {{ order.expectedDeliveryDate | date:'short' }}
+                </small>
+              </div>
+            </td>
+            <td class="actions-cell">
+              <div class="action-buttons">
+                <button class="btn btn-sm btn-outline" 
+                        (click)="viewOrder(order)"
+                        title="View Details">
+                  <i class="fas fa-eye"></i>
+                </button>
+                <button class="btn btn-sm btn-primary" 
+                        (click)="editOrder(order)"
+                        *ngIf="canManageOrders()"
+                        title="Edit">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-info" 
+                        (click)="updateOrderStatus(order)"
+                        *ngIf="canManageOrders()"
+                        title="Update Status">
+                  <i class="fas fa-sync"></i>
+                </button>
+                <button class="btn btn-sm btn-warning" 
+                        (click)="printOrder(order)"
+                        title="Print">
+                  <i class="fas fa-print"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" 
+                        (click)="cancelOrder(order)"
+                        *ngIf="canCancelOrder(order)"
+                        title="Cancel">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Grid View -->
+    <div class="orders-grid" *ngIf="viewMode === 'grid'">
+      <div class="order-card" *ngFor="let order of filteredOrders">
+        <div class="card-header">
+          <div class="order-number">
+            <strong>{{ order.orderNumber }}</strong>
+            <small>{{ order.trackingNumber || 'No tracking' }}</small>
+          </div>
+          <div class="order-status">
+            <span class="status-badge" 
+                  [class]="getStatusClass(order.status)">
+              {{ order.status | titlecase }}
+            </span>
+            <span class="priority-badge" 
+                  [class]="getPriorityClass(order.priority)">
+              {{ order.priority | titlecase }}
+            </span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="customer-section">
+            <h4>{{ order.customerName }}</h4>
+            <p>{{ order.customerEmail }}</p>
+            <p>{{ order.customerPhone }}</p>
+          </div>
+
+          <div class="items-section">
+            <h5>Items ({{ order.items.length }})</h5>
+            <div class="items-list">
+              <div *ngFor="let item of order.items.slice(0, 3)" class="item-row">
+                <span class="item-name">{{ item.product.name }}</span>
+                <span class="item-quantity">x{{ item.quantity }}</span>
+                <span class="item-price">{{ item.totalPrice | currency }}</span>
+              </div>
+              <div *ngIf="order.items.length > 3" class="more-items">
+                +{{ order.items.length - 3 }} more items
+              </div>
+            </div>
+          </div>
+
+          <div class="total-section">
+            <div class="total-breakdown">
+              <div class="total-row">
+                <span>Subtotal:</span>
+                <span>{{ order.subtotal | currency }}</span>
+              </div>
+              <div class="total-row">
+                <span>Tax:</span>
+                <span>{{ order.taxAmount | currency }}</span>
+              </div>
+              <div class="total-row">
+                <span>Shipping:</span>
+                <span>{{ order.shippingAmount | currency }}</span>
+              </div>
+              <div class="total-row total-amount">
+                <span>Total:</span>
+                <span>{{ order.totalAmount | currency }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="date-section">
+            <div class="date-info">
+              <span class="created-date">
+                <i class="fas fa-calendar"></i>
+                {{ order.createdAt | date:'short' }}
+              </span>
+              <span class="expected-delivery" *ngIf="order.expectedDeliveryDate">
+                <i class="fas fa-truck"></i>
+                Expected: {{ order.expectedDeliveryDate | date:'short' }}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <div class="action-buttons">
+            <button class="btn btn-sm btn-outline" (click)="viewOrder(order)">
+              <i class="fas fa-eye"></i>
+            </button>
+            <button class="btn btn-sm btn-primary" 
+                    (click)="editOrder(order)"
+                    *ngIf="canManageOrders()">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-sm btn-info" 
+                    (click)="updateOrderStatus(order)"
+                    *ngIf="canManageOrders()">
+              <i class="fas fa-sync"></i>
+            </button>
+            <button class="btn btn-sm btn-warning" (click)="printOrder(order)">
+              <i class="fas fa-print"></i>
+            </button>
+            <button class="btn btn-sm btn-danger" 
+                    (click)="cancelOrder(order)"
+                    *ngIf="canCancelOrder(order)">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination-container" *ngIf="totalPages > 1">
+      <app-pagination
+        [currentPage]="currentPage"
+        [totalPages]="totalPages"
+        [pageSize]="pageSize"
+        (pageChange)="onPageChange($event)">
+      </app-pagination>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Order Modal -->
+<div class="modal" [class.active]="showOrderModal" *ngIf="showOrderModal">
+  <div class="modal-backdrop" (click)="closeOrderModal()"></div>
+  <div class="modal-content large">
+    <div class="modal-header">
+      <h3>{{ editingOrder ? 'Edit Order' : 'Create New Order' }}</h3>
+      <button class="btn btn-close" (click)="closeOrderModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form [formGroup]="orderForm" (ngSubmit)="saveOrder()">
+        <div class="form-section">
+          <h4>Customer Information</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="customerName">Customer Name *</label>
+              <input type="text" id="customerName" formControlName="customerName" required>
+            </div>
+            <div class="form-group">
+              <label for="customerEmail">Email *</label>
+              <input type="email" id="customerEmail" formControlName="customerEmail" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="customerPhone">Phone *</label>
+              <input type="tel" id="customerPhone" formControlName="customerPhone" required>
+            </div>
+            <div class="form-group">
+              <label for="orderNumber">Order Number</label>
+              <input type="text" id="orderNumber" formControlName="orderNumber" readonly>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h4>Shipping Address</h4>
+          <div class="form-group">
+            <label for="shippingStreet">Street *</label>
+            <input type="text" id="shippingStreet" formControlName="shippingStreet" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="shippingCity">City *</label>
+              <input type="text" id="shippingCity" formControlName="shippingCity" required>
+            </div>
+            <div class="form-group">
+              <label for="shippingState">State *</label>
+              <input type="text" id="shippingState" formControlName="shippingState" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="shippingZipCode">ZIP Code *</label>
+              <input type="text" id="shippingZipCode" formControlName="shippingZipCode" required>
+            </div>
+            <div class="form-group">
+              <label for="shippingCountry">Country *</label>
+              <input type="text" id="shippingCountry" formControlName="shippingCountry" required>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h4>Order Details</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="status">Status *</label>
+              <select id="status" formControlName="status" required>
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="processing">Processing</option>
+                <option value="picked">Picked</option>
+                <option value="packed">Packed</option>
+                <option value="shipped">Shipped</option>
+                <option value="delivered">Delivered</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="priority">Priority *</label>
+              <select id="priority" formControlName="priority" required>
+                <option value="low">Low</option>
+                <option value="normal">Normal</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="notes">Notes</label>
+            <textarea id="notes" formControlName="notes" rows="3"></textarea>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h4>Order Items</h4>
+          <div class="items-management">
+            <div class="add-item">
+              <select [(ngModel)]="selectedProduct" (change)="onProductSelect()">
+                <option value="">Select Product</option>
+                <option *ngFor="let product of products" [value]="product.id">
+                  {{ product.name }} - {{ product.sku }}
+                </option>
+              </select>
+              <input type="number" [(ngModel)]="itemQuantity" placeholder="Quantity" min="1">
+              <button type="button" class="btn btn-primary" (click)="addItem()">
+                <i class="fas fa-plus"></i>
+                Add Item
+              </button>
+            </div>
+            
+            <div class="items-list" *ngIf="orderItems.length > 0">
+              <div class="item-row" *ngFor="let item of orderItems; let i = index">
+                <div class="item-info">
+                  <span class="item-name">{{ item.product.name }}</span>
+                  <span class="item-sku">{{ item.product.sku }}</span>
+                </div>
+                <div class="item-quantity">
+                  <input type="number" [(ngModel)]="item.quantity" min="1" (change)="updateItemTotal(item)">
+                </div>
+                <div class="item-price">
+                  {{ item.unitPrice | currency }}
+                </div>
+                <div class="item-total">
+                  {{ item.totalPrice | currency }}
+                </div>
+                <div class="item-actions">
+                  <button type="button" class="btn btn-sm btn-danger" (click)="removeItem(i)">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeOrderModal()">Cancel</button>
+      <button class="btn btn-primary" (click)="saveOrder()" [disabled]="orderForm.invalid || orderItems.length === 0">
+        {{ editingOrder ? 'Update' : 'Create' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Order Status Update Modal -->
+<div class="modal" [class.active]="showStatusModal" *ngIf="showStatusModal">
+  <div class="modal-backdrop" (click)="closeStatusModal()"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Update Order Status</h3>
+      <button class="btn btn-close" (click)="closeStatusModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form [formGroup]="statusForm" (ngSubmit)="updateStatus()">
+        <div class="form-group">
+          <label for="newStatus">New Status *</label>
+          <select id="newStatus" formControlName="status" required>
+            <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="processing">Processing</option>
+            <option value="picked">Picked</option>
+            <option value="packed">Packed</option>
+            <option value="shipped">Shipped</option>
+            <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="trackingNumber">Tracking Number</label>
+          <input type="text" id="trackingNumber" formControlName="trackingNumber">
+        </div>
+        <div class="form-group">
+          <label for="statusNotes">Notes</label>
+          <textarea id="statusNotes" formControlName="notes" rows="3"></textarea>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeStatusModal()">Cancel</button>
+      <button class="btn btn-primary" (click)="updateStatus()" [disabled]="statusForm.invalid">
+        Update Status
+      </button>
+    </div>
+  </div>
+</div>

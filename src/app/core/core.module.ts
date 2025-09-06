@@ -9,20 +9,23 @@ import { AngularFireMessagingModule } from '@angular/fire/compat/messaging';
 
 import { environment } from '../../environments/environment';
 
-// Services
-import { AuthService } from './services/auth.service';
-import { NotificationService } from './services/notification.service';
-import { LoadingService } from './services/loading.service';
+
+ import { WarehouseService } from './services/warehouse.service';
+import { InventoryService } from './services/inventory.service';
+import { OrderService } from './services/order.service';
+
+
+
+
 import { ErrorHandlerService } from './services/error-handler.service';
-
-// Guards
-import { AuthGuard } from './guards/auth.guard';
 import { AdminGuard } from './guards/admin.guard';
-
-// Interceptors
+import { AuthGuard } from './guards/auth.guard';
 import { AuthInterceptor } from './interceptors/auth.interceptor';
-import { LoadingInterceptor } from './interceptors/loading.interceptor';
 import { ErrorInterceptor } from './interceptors/error.interceptor';
+import { LoadingInterceptor } from './interceptors/loading.interceptor';
+import { AuthService } from './services/auth.service';
+import { LoadingService } from './services/loading.service';
+import { NotificationService } from './services/notification.service';
 
 @NgModule({
   declarations: [],
@@ -41,6 +44,9 @@ import { ErrorInterceptor } from './interceptors/error.interceptor';
     NotificationService,
     LoadingService,
     ErrorHandlerService,
+    WarehouseService,
+    InventoryService,
+    OrderService,
     
     // Guards
     AuthGuard,

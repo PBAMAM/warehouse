@@ -1,0 +1,270 @@
+<div class="reports-container">
+  <div class="reports-header">
+    <div class="header-content">
+      <h1 class="page-title">
+        <i class="fas fa-chart-bar"></i>
+        Reports & Analytics
+      </h1>
+      <div class="header-actions">
+        <button class="btn btn-primary" (click)="generateReport()">
+          <i class="fas fa-download"></i>
+          Generate Report
+        </button>
+        <button class="btn btn-outline" (click)="exportData()">
+          <i class="fas fa-file-export"></i>
+          Export Data
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Date Range Filter -->
+  <div class="reports-filters">
+    <div class="filters-row">
+      <div class="date-range">
+        <label>Date Range:</label>
+        <input type="date" [(ngModel)]="startDate" (change)="onDateChange()">
+        <span>to</span>
+        <input type="date" [(ngModel)]="endDate" (change)="onDateChange()">
+      </div>
+      <div class="filter-group">
+        <select [(ngModel)]="reportType" (change)="onReportTypeChange()">
+          <option value="overview">Overview</option>
+          <option value="inventory">Inventory</option>
+          <option value="orders">Orders</option>
+          <option value="warehouse">Warehouse</option>
+          <option value="financial">Financial</option>
+        </select>
+        <select [(ngModel)]="timePeriod" (change)="onTimePeriodChange()">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+          <option value="yearly">Yearly</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Key Metrics Cards -->
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-icon">
+        <i class="fas fa-dollar-sign"></i>
+      </div>
+      <div class="metric-content">
+        <h3>{{ totalRevenue | currency }}</h3>
+        <p>Total Revenue</p>
+        <span class="metric-change" [class.positive]="revenueChange >= 0" [class.negative]="revenueChange < 0">
+          <i class="fas" [class.fa-arrow-up]="revenueChange >= 0" [class.fa-arrow-down]="revenueChange < 0"></i>
+          {{ Math.abs(revenueChange) }}%
+        </span>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon">
+        <i class="fas fa-shopping-cart"></i>
+      </div>
+      <div class="metric-content">
+        <h3>{{ totalOrders }}</h3>
+        <p>Total Orders</p>
+        <span class="metric-change" [class.positive]="ordersChange >= 0" [class.negative]="ordersChange < 0">
+          <i class="fas" [class.fa-arrow-up]="ordersChange >= 0" [class.fa-arrow-down]="ordersChange < 0"></i>
+          {{ Math.abs(ordersChange) }}%
+        </span>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon">
+        <i class="fas fa-boxes"></i>
+      </div>
+      <div class="metric-content">
+        <h3>{{ totalProducts }}</h3>
+        <p>Total Products</p>
+        <span class="metric-change" [class.positive]="productsChange >= 0" [class.negative]="productsChange < 0">
+          <i class="fas" [class.fa-arrow-up]="productsChange >= 0" [class.fa-arrow-down]="productsChange < 0"></i>
+          {{ Math.abs(productsChange) }}%
+        </span>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon">
+        <i class="fas fa-warehouse"></i>
+      </div>
+      <div class="metric-content">
+        <h3>{{ totalWarehouses }}</h3>
+        <p>Active Warehouses</p>
+        <span class="metric-change" [class.positive]="warehousesChange >= 0" [class.negative]="warehousesChange < 0">
+          <i class="fas" [class.fa-arrow-up]="warehousesChange >= 0" [class.fa-arrow-down]="warehousesChange < 0"></i>
+          {{ Math.abs(warehousesChange) }}%
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Section -->
+  <div class="charts-section">
+    <div class="chart-container">
+      <div class="chart-header">
+        <h3>Revenue Trend</h3>
+        <div class="chart-controls">
+          <button class="btn btn-sm" [class.active]="revenueChartType === 'line'" (click)="setRevenueChartType('line')">
+            <i class="fas fa-chart-line"></i>
+          </button>
+          <button class="btn btn-sm" [class.active]="revenueChartType === 'bar'" (click)="setRevenueChartType('bar')">
+            <i class="fas fa-chart-bar"></i>
+          </button>
+        </div>
+      </div>
+      <div class="chart-content">
+        <canvas #revenueChart></canvas>
+      </div>
+    </div>
+
+    <div class="chart-container">
+      <div class="chart-header">
+        <h3>Order Status Distribution</h3>
+      </div>
+      <div class="chart-content">
+        <canvas #orderStatusChart></canvas>
+      </div>
+    </div>
+
+    <div class="chart-container">
+      <div class="chart-header">
+        <h3>Top Products by Sales</h3>
+      </div>
+      <div class="chart-content">
+        <canvas #topProductsChart></canvas>
+      </div>
+    </div>
+
+    <div class="chart-container">
+      <div class="chart-header">
+        <h3>Warehouse Utilization</h3>
+      </div>
+      <div class="chart-content">
+        <canvas #warehouseUtilizationChart></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data Tables -->
+  <div class="tables-section">
+    <div class="table-container">
+      <div class="table-header">
+        <h3>Recent Orders</h3>
+        <button class="btn btn-sm btn-outline" (click)="viewAllOrders()">
+          View All
+        </button>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Order #</th>
+              <th>Customer</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let order of recentOrders">
+              <td>{{ order.orderNumber }}</td>
+              <td>{{ order.customerName }}</td>
+              <td>{{ order.totalAmount | currency }}</td>
+              <td>
+                <span class="status-badge" [class]="order.status">
+                  {{ order.status | titlecase }}
+                </span>
+              </td>
+              <td>{{ order.createdAt | date:'short' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <div class="table-header">
+        <h3>Low Stock Items</h3>
+        <button class="btn btn-sm btn-outline" (click)="viewAllInventory()">
+          View All
+        </button>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>SKU</th>
+              <th>Current Stock</th>
+              <th>Min Level</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of lowStockItems">
+              <td>{{ item.product.name }}</td>
+              <td>{{ item.product.sku }}</td>
+              <td>{{ item.quantity }}</td>
+              <td>{{ item.minStockLevel }}</td>
+              <td>
+                <span class="status-badge" [class]="getStockStatus(item)">
+                  {{ getStockStatus(item) | titlecase }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="summary-section">
+    <div class="summary-card">
+      <h3>Performance Summary</h3>
+      <div class="summary-content">
+        <div class="summary-item">
+          <span class="label">Average Order Value:</span>
+          <span class="value">{{ averageOrderValue | currency }}</span>
+        </div>
+        <div class="summary-item">
+          <span class="label">Order Fulfillment Rate:</span>
+          <span class="value">{{ fulfillmentRate }}%</span>
+        </div>
+        <div class="summary-item">
+          <span class="label">Inventory Turnover:</span>
+          <span class="value">{{ inventoryTurnover }}x</span>
+        </div>
+        <div class="summary-item">
+          <span class="label">Customer Satisfaction:</span>
+          <span class="value">{{ customerSatisfaction }}%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <h3>Top Performing Warehouses</h3>
+      <div class="warehouse-list">
+        <div class="warehouse-item" *ngFor="let warehouse of topWarehouses">
+          <div class="warehouse-info">
+            <h4>{{ warehouse.name }}</h4>
+            <p>{{ warehouse.location }}</p>
+          </div>
+          <div class="warehouse-metrics">
+            <div class="metric">
+              <span class="label">Utilization:</span>
+              <span class="value">{{ warehouse.utilization }}%</span>
+            </div>
+            <div class="metric">
+              <span class="label">Orders:</span>
+              <span class="value">{{ warehouse.orderCount }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

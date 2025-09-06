@@ -1,0 +1,419 @@
+<div class="inventory-container">
+  <div class="inventory-header">
+    <div class="header-content">
+      <h1 class="page-title">
+        <i class="fas fa-boxes"></i>
+        Inventory Management
+      </h1>
+      <div class="header-actions">
+        <button 
+          class="btn btn-primary" 
+          (click)="openAddProductModal()"
+          *ngIf="canManageInventory()">
+          <i class="fas fa-plus"></i>
+          Add Product
+        </button>
+        <button 
+          class="btn btn-secondary" 
+          (click)="openStockAdjustmentModal()"
+          *ngIf="canManageInventory()">
+          <i class="fas fa-edit"></i>
+          Stock Adjustment
+        </button>
+        <button class="btn btn-outline" (click)="exportInventory()">
+          <i class="fas fa-download"></i>
+          Export
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters and Search -->
+  <div class="inventory-filters">
+    <div class="filters-row">
+      <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input 
+          type="text" 
+          placeholder="Search products..." 
+          [(ngModel)]="searchTerm"
+          (input)="onSearchChange()">
+      </div>
+      <div class="filter-group">
+        <select [(ngModel)]="selectedCategory" (change)="onFilterChange()">
+          <option value="">All Categories</option>
+          <option *ngFor="let category of categories" [value]="category.id">
+            {{ category.name }}
+          </option>
+        </select>
+        <select [(ngModel)]="selectedWarehouse" (change)="onFilterChange()">
+          <option value="">All Warehouses</option>
+          <option *ngFor="let warehouse of warehouses" [value]="warehouse.id">
+            {{ warehouse.name }}
+          </option>
+        </select>
+        <select [(ngModel)]="stockFilter" (change)="onFilterChange()">
+          <option value="all">All Stock</option>
+          <option value="low">Low Stock</option>
+          <option value="out">Out of Stock</option>
+          <option value="available">Available</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Inventory Stats Cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-boxes"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ totalProducts }}</h3>
+        <p>Total Products</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-exclamation-triangle"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ lowStockCount }}</h3>
+        <p>Low Stock Items</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-times-circle"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ outOfStockCount }}</h3>
+        <p>Out of Stock</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-dollar-sign"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ totalValue | currency }}</h3>
+        <p>Total Value</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Inventory Table -->
+  <div class="inventory-table-container">
+    <div class="table-header">
+      <h3>Inventory Items</h3>
+      <div class="table-actions">
+        <button class="btn btn-sm btn-outline" (click)="toggleViewMode()">
+          <i class="fas" [class.fa-th]="viewMode === 'grid'" [class.fa-list]="viewMode === 'list'"></i>
+          {{ viewMode === 'grid' ? 'List View' : 'Grid View' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- List View -->
+    <div class="table-responsive" *ngIf="viewMode === 'list'">
+      <table class="inventory-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>SKU</th>
+            <th>Category</th>
+            <th>Warehouse</th>
+            <th>Location</th>
+            <th>Stock</th>
+            <th>Unit Price</th>
+            <th>Total Value</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of filteredInventory" class="inventory-row">
+            <td class="product-cell">
+              <div class="product-info">
+                <img [src]="item.product.imageUrl || '/assets/images/no-image.png'" 
+                     [alt]="item.product.name" 
+                     class="product-image">
+                <div class="product-details">
+                  <h4>{{ item.product.name }}</h4>
+                  <p>{{ item.product.brand }}</p>
+                </div>
+              </div>
+            </td>
+            <td>{{ item.product.sku }}</td>
+            <td>{{ item.product.category }}</td>
+            <td>{{ getWarehouseName(item.warehouseId) }}</td>
+            <td>{{ item.location }}</td>
+            <td class="stock-cell">
+              <div class="stock-info">
+                <span class="stock-quantity" 
+                      [class.low-stock]="item.quantity <= item.reorderPoint"
+                      [class.out-of-stock]="item.quantity === 0">
+                  {{ item.quantity }}
+                </span>
+                <small class="stock-details">
+                  Min: {{ item.minStockLevel }} | Max: {{ item.maxStockLevel }}
+                </small>
+              </div>
+            </td>
+            <td>{{ item.product.unitPrice | currency }}</td>
+            <td>{{ (item.quantity * item.product.unitPrice) | currency }}</td>
+            <td>
+              <span class="status-badge" 
+                    [class.low-stock]="item.quantity <= item.reorderPoint && item.quantity > 0"
+                    [class.out-of-stock]="item.quantity === 0"
+                    [class.available]="item.quantity > item.reorderPoint">
+                {{ getStockStatus(item) }}
+              </span>
+            </td>
+            <td class="actions-cell">
+              <div class="action-buttons">
+                <button class="btn btn-sm btn-outline" 
+                        (click)="viewProduct(item)"
+                        title="View Details">
+                  <i class="fas fa-eye"></i>
+                </button>
+                <button class="btn btn-sm btn-primary" 
+                        (click)="editProduct(item)"
+                        *ngIf="canManageInventory()"
+                        title="Edit">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-warning" 
+                        (click)="adjustStock(item)"
+                        *ngIf="canManageInventory()"
+                        title="Adjust Stock">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" 
+                        (click)="deleteProduct(item)"
+                        *ngIf="canManageInventory()"
+                        title="Delete">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Grid View -->
+    <div class="inventory-grid" *ngIf="viewMode === 'grid'">
+      <div class="inventory-card" *ngFor="let item of filteredInventory">
+        <div class="card-header">
+          <img [src]="item.product.imageUrl || '/assets/images/no-image.png'" 
+               [alt]="item.product.name" 
+               class="product-image">
+          <div class="product-status">
+            <span class="status-badge" 
+                  [class.low-stock]="item.quantity <= item.reorderPoint && item.quantity > 0"
+                  [class.out-of-stock]="item.quantity === 0"
+                  [class.available]="item.quantity > item.reorderPoint">
+              {{ getStockStatus(item) }}
+            </span>
+          </div>
+        </div>
+        <div class="card-body">
+          <h4 class="product-name">{{ item.product.name }}</h4>
+          <p class="product-brand">{{ item.product.brand }}</p>
+          <p class="product-sku">SKU: {{ item.product.sku }}</p>
+          <div class="stock-info">
+            <div class="stock-quantity" 
+                 [class.low-stock]="item.quantity <= item.reorderPoint"
+                 [class.out-of-stock]="item.quantity === 0">
+              {{ item.quantity }} {{ item.product.unit }}
+            </div>
+            <div class="stock-details">
+              Min: {{ item.minStockLevel }} | Max: {{ item.maxStockLevel }}
+            </div>
+          </div>
+          <div class="price-info">
+            <span class="unit-price">{{ item.product.unitPrice | currency }}</span>
+            <span class="total-value">{{ (item.quantity * item.product.unitPrice) | currency }}</span>
+          </div>
+        </div>
+        <div class="card-footer">
+          <div class="action-buttons">
+            <button class="btn btn-sm btn-outline" (click)="viewProduct(item)">
+              <i class="fas fa-eye"></i>
+            </button>
+            <button class="btn btn-sm btn-primary" 
+                    (click)="editProduct(item)"
+                    *ngIf="canManageInventory()">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-sm btn-warning" 
+                    (click)="adjustStock(item)"
+                    *ngIf="canManageInventory()">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-sm btn-danger" 
+                    (click)="deleteProduct(item)"
+                    *ngIf="canManageInventory()">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination-container" *ngIf="totalPages > 1">
+      <app-pagination
+        [currentPage]="currentPage"
+        [totalPages]="totalPages"
+        [pageSize]="pageSize"
+        (pageChange)="onPageChange($event)">
+      </app-pagination>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Product Modal -->
+<div class="modal" [class.active]="showProductModal" *ngIf="showProductModal">
+  <div class="modal-backdrop" (click)="closeProductModal()"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>{{ editingProduct ? 'Edit Product' : 'Add New Product' }}</h3>
+      <button class="btn btn-close" (click)="closeProductModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form [formGroup]="productForm" (ngSubmit)="saveProduct()">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="name">Product Name *</label>
+            <input type="text" id="name" formControlName="name" required>
+          </div>
+          <div class="form-group">
+            <label for="sku">SKU *</label>
+            <input type="text" id="sku" formControlName="sku" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="category">Category *</label>
+            <select id="category" formControlName="category" required>
+              <option value="">Select Category</option>
+              <option *ngFor="let category of categories" [value]="category.name">
+                {{ category.name }}
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="brand">Brand *</label>
+            <input type="text" id="brand" formControlName="brand" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="unitPrice">Unit Price *</label>
+            <input type="number" id="unitPrice" formControlName="unitPrice" step="0.01" required>
+          </div>
+          <div class="form-group">
+            <label for="costPrice">Cost Price *</label>
+            <input type="number" id="costPrice" formControlName="costPrice" step="0.01" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="unit">Unit *</label>
+            <select id="unit" formControlName="unit" required>
+              <option value="">Select Unit</option>
+              <option value="pcs">Pieces</option>
+              <option value="kg">Kilograms</option>
+              <option value="g">Grams</option>
+              <option value="l">Liters</option>
+              <option value="ml">Milliliters</option>
+              <option value="m">Meters</option>
+              <option value="cm">Centimeters</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="weight">Weight (kg)</label>
+            <input type="number" id="weight" formControlName="weight" step="0.01">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="description">Description</label>
+          <textarea id="description" formControlName="description" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="barcode">Barcode</label>
+          <input type="text" id="barcode" formControlName="barcode">
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeProductModal()">Cancel</button>
+      <button class="btn btn-primary" (click)="saveProduct()" [disabled]="productForm.invalid">
+        {{ editingProduct ? 'Update' : 'Create' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Stock Adjustment Modal -->
+<div class="modal" [class.active]="showStockModal" *ngIf="showStockModal">
+  <div class="modal-backdrop" (click)="closeStockModal()"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Stock Adjustment</h3>
+      <button class="btn btn-close" (click)="closeStockModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form [formGroup]="stockForm" (ngSubmit)="saveStockAdjustment()">
+        <div class="form-group">
+          <label>Product</label>
+        <div class="product-info" *ngIf="selectedItem">
+          <img [src]="selectedItem.product.imageUrl || '/assets/images/no-image.png'" 
+               [alt]="selectedItem.product.name" 
+               class="product-image">
+          <div class="product-details">
+            <h4>{{ selectedItem.product.name }}</h4>
+            <p>Current Stock: {{ selectedItem.quantity }} {{ selectedItem.product.unit }}</p>
+          </div>
+        </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="movementType">Movement Type *</label>
+            <select id="movementType" formControlName="movementType" required>
+              <option value="">Select Type</option>
+              <option value="in">Stock In</option>
+              <option value="out">Stock Out</option>
+              <option value="adjustment">Adjustment</option>
+              <option value="transfer">Transfer</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="quantity">Quantity *</label>
+            <input type="number" id="quantity" formControlName="quantity" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="reason">Reason *</label>
+          <input type="text" id="reason" formControlName="reason" required>
+        </div>
+        <div class="form-group">
+          <label for="notes">Notes</label>
+          <textarea id="notes" formControlName="notes" rows="3"></textarea>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeStockModal()">Cancel</button>
+      <button class="btn btn-primary" (click)="saveStockAdjustment()" [disabled]="stockForm.invalid">
+        Save Adjustment
+      </button>
+    </div>
+  </div>
+</div>

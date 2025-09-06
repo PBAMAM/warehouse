@@ -8,7 +8,7 @@ export interface User {
   department?: string;
   phone?: string;
   avatar?: string;
-  isActive: boolean;
+  isActive?: boolean;
   createdAt: Date;
   lastLoginAt?: Date;
   permissions?: string[];
