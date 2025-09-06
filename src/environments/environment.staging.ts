@@ -1,10 +1,5 @@
 export const environment = {
-  production: false,
-  apiUrl: 'https://staging-api.warehouse.com/api',
-  appName: 'Warehouse Management System',
-  version: '1.0.0',
-  debug: true,
-  logLevel: 'info',
+  production: true,
   firebase: {
     apiKey: "AIzaSyD_kYjg-Kh729ZwWZ4kciNbfSOBtbvRUdg",
     authDomain: "warehouse-6b3ac.firebaseapp.com",
