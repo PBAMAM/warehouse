@@ -133,6 +133,9 @@ export class NotificationService {
     );
     this.notificationsSubject.next(updatedNotifications);
     this.updateUnreadCount();
+    
+    // Update in Firebase
+    this.updateNotificationInFirestore(notificationId, { read: true });
   }
 
   // Mark all notifications as read
@@ -144,6 +147,9 @@ export class NotificationService {
     }));
     this.notificationsSubject.next(updatedNotifications);
     this.updateUnreadCount();
+    
+    // Update all in Firebase
+    this.updateAllNotificationsInFirestore({ read: true });
   }
 
   // Remove notification
@@ -154,12 +160,18 @@ export class NotificationService {
     );
     this.notificationsSubject.next(updatedNotifications);
     this.updateUnreadCount();
+    
+    // Remove from Firebase
+    this.deleteNotificationFromFirestore(notificationId);
   }
 
   // Clear all notifications
   clearAllNotifications(): void {
     this.notificationsSubject.next([]);
     this.updateUnreadCount();
+    
+    // Clear from Firebase
+    this.clearAllNotificationsFromFirestore();
   }
 
   // Get notifications for a specific user
@@ -178,6 +190,92 @@ export class NotificationService {
       await this.firestore.collection('notifications').add(notification);
     } catch (error) {
       console.error('Error saving notification to Firestore:', error);
+    }
+  }
+
+  // Update notification in Firestore
+  private async updateNotificationInFirestore(notificationId: string, updates: Partial<Notification>): Promise<void> {
+    try {
+      const notificationRef = this.firestore.collection('notifications', ref => 
+        ref.where('id', '==', notificationId)
+      );
+      const snapshot = await notificationRef.get().toPromise();
+      
+      if (snapshot && !snapshot.empty) {
+        const doc = snapshot.docs[0];
+        await doc.ref.update(updates);
+      }
+    } catch (error) {
+      console.error('Error updating notification in Firestore:', error);
+    }
+  }
+
+  // Update all notifications in Firestore
+  private async updateAllNotificationsInFirestore(updates: Partial<Notification>): Promise<void> {
+    try {
+      const notifications = this.notificationsSubject.value;
+      const batch = this.firestore.firestore.batch();
+      
+      for (const notification of notifications) {
+        if (notification.id) {
+          const notificationRef = this.firestore.collection('notifications', ref => 
+            ref.where('id', '==', notification.id)
+          );
+          const snapshot = await notificationRef.get().toPromise();
+          
+          if (snapshot && !snapshot.empty) {
+            const doc = snapshot.docs[0];
+            batch.update(doc.ref, updates);
+          }
+        }
+      }
+      
+      await batch.commit();
+    } catch (error) {
+      console.error('Error updating all notifications in Firestore:', error);
+    }
+  }
+
+  // Delete notification from Firestore
+  private async deleteNotificationFromFirestore(notificationId: string): Promise<void> {
+    try {
+      const notificationRef = this.firestore.collection('notifications', ref => 
+        ref.where('id', '==', notificationId)
+      );
+      const snapshot = await notificationRef.get().toPromise();
+      
+      if (snapshot && !snapshot.empty) {
+        const doc = snapshot.docs[0];
+        await doc.ref.delete();
+      }
+    } catch (error) {
+      console.error('Error deleting notification from Firestore:', error);
+    }
+  }
+
+  // Clear all notifications from Firestore
+  private async clearAllNotificationsFromFirestore(): Promise<void> {
+    try {
+      const notifications = this.notificationsSubject.value;
+      const batch = this.firestore.firestore.batch();
+      
+      for (const notification of notifications) {
+        if (notification.id) {
+          const notificationRef = this.firestore.collection('notifications', ref => 
+            ref.where('id', '==', notification.id)
+          );
+          const snapshot = await notificationRef.get().toPromise();
+          
+          if (snapshot && !snapshot.empty) {
+            const doc = snapshot.docs[0];
+            batch.delete(doc.ref);
+          }
+        }
+      }
+      
+      await batch.commit();
+    } catch (error) {
+      console.error('Error clearing all notifications from Firestore:', error);
     }
   }
 

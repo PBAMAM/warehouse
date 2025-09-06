@@ -30,8 +30,9 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    console.log('App component initialized');
     this.setupRouteTracking();
+    // Clear any existing test notifications
+    this.notificationService.clearAllNotifications();
   }
 
   ngOnDestroy() {
@@ -71,4 +72,5 @@ export class AppComponent implements OnInit, OnDestroy {
       this.notificationService.markAsRead(notification.id);
     }
   }
+
 }

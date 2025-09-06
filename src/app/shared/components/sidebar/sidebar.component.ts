@@ -47,6 +47,12 @@ export class SidebarComponent implements OnInit, OnDestroy {
       icon: 'fas fa-chart-bar',
       route: '/reports',
       active: false
+    },
+    {
+      label: 'Notifications',
+      icon: 'fas fa-bell',
+      route: '/notifications',
+      active: false
     }
   ];
 
@@ -97,4 +103,5 @@ export class SidebarComponent implements OnInit, OnDestroy {
   logout() {
     this.authService.signOut();
   }
+
 }

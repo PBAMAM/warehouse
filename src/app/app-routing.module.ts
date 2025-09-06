@@ -36,6 +36,11 @@ const routes: Routes = [
     loadChildren: () => import('./pages/reports/reports.module').then(m => m.ReportsModule),
     canActivate: [AuthGuard]
   },
+  { 
+    path: 'notifications', 
+    loadChildren: () => import('./pages/notifications/notifications.module').then(m => m.NotificationsModule),
+    canActivate: [AuthGuard]
+  },
   { path: '**', redirectTo: '/login' }
 ];
 

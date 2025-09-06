@@ -3,6 +3,19 @@
   <!-- Sidebar Navigation -->
   <app-sidebar *ngIf="showSidebar"></app-sidebar>
   
+  <!-- Top Header Bar -->
+  <div class="top-header" *ngIf="showSidebar">
+    <div class="header-content">
+      <div class="header-left">
+        <h2 class="page-title">Warehouse Management</h2>
+      </div>
+      <div class="header-right">
+        <!-- Notification Bell -->
+        <app-notification-bell></app-notification-bell>
+      </div>
+    </div>
+  </div>
+
   <!-- Main Content Area -->
   <div class="main-content" [class.full-width]="!showSidebar">
     <!-- Router Outlet for Pages -->

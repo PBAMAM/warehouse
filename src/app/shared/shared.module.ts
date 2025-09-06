@@ -11,6 +11,7 @@ import { RouterModule } from '@angular/router';
 // Components
 import { LoadingSpinnerComponent } from './components/loading-spinner/loading-spinner.component';
 import { NotificationToastComponent } from './components/notification-toast/notification-toast.component';
+import { NotificationBellComponent } from './components/notification-bell/notification-bell.component';
 import { ConfirmDialogComponent } from './components/confirm-dialog/confirm-dialog.component';
 import { SearchBoxComponent } from './components/search-box/search-box.component';
 import { PaginationComponent } from './components/pagination/pagination.component';
@@ -29,6 +30,7 @@ import { TimeAgoPipe } from './pipes/time-ago.pipe';
 const COMPONENTS = [
   LoadingSpinnerComponent,
   NotificationToastComponent,
+  NotificationBellComponent,
   ConfirmDialogComponent,
   SearchBoxComponent,
   PaginationComponent,
