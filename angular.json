@@ -48,7 +48,13 @@
                   "maximumError": "4kb"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
+              ]
             },
             "development": {
               "buildOptimizer": false,
@@ -57,6 +63,20 @@
               "extractLicenses": false,
               "sourceMap": true,
               "namedChunks": true
+            },
+            "staging": {
+              "buildOptimizer": true,
+              "optimization": true,
+              "vendorChunk": false,
+              "extractLicenses": true,
+              "sourceMap": false,
+              "namedChunks": false,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.staging.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -69,6 +89,9 @@
             },
             "development": {
               "browserTarget": "warehouse-project:build:development"
+            },
+            "staging": {
+              "browserTarget": "warehouse-project:build:staging"
             }
           },
           "defaultConfiguration": "development"
@@ -100,5 +123,8 @@
         }
       }
     }
+  },
+  "cli": {
+    "analytics": "7d78264f-1df0-4913-a472-b5cdc534bdd7"
   }
 }
