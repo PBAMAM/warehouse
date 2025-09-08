@@ -1,4 +1,14 @@
 <div class="login-container">
+  <!-- Snackbar Notifications -->
+  <div class="snackbar-container">
+    <app-notification-toast
+      *ngFor="let notification of notifications"
+      [notification]="notification"
+      (close)="onNotificationClose($event)"
+      (click)="onNotificationClick($event)"
+    ></app-notification-toast>
+  </div>
+
   <!-- Left Side - Login Form -->
   <div class="login-side">
     <div class="login-card">

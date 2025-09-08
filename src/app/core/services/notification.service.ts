@@ -25,12 +25,12 @@ export class NotificationService {
   private notificationsSubject = new BehaviorSubject<Notification[]>([]);
   private notificationThrottle = new Map<string, number>(); // Track last notification time by type
   private userSettings = {
-    showSuccessNotifications: false, // Don't show success notifications by default
+    showSuccessNotifications: true,  // Show success notifications for login
     showInfoNotifications: false,    // Don't show info notifications by default
     showWarningNotifications: true,  // Show warnings
     showErrorNotifications: true,    // Show errors
     showStockAdjustmentNotifications: false, // Don't show stock adjustment notifications by default
-    throttleDuration: 5000,          // 5 seconds throttle for same type
+    throttleDuration: 3000,          // 3 seconds throttle for same type (reduced for better UX)
     maxNotificationsPerMinute: 10    // Limit notifications per minute
   };
   public notifications$ = this.notificationsSubject.asObservable();
@@ -420,7 +420,6 @@ export class NotificationService {
     }
   }
 
-  // Real-time activity notifications
   notifyOrderCreated(orderNumber: string, customerName: string, userId?: string): void {
     this.addNotification({
       title: 'New Order Created',
@@ -461,7 +460,6 @@ export class NotificationService {
   }
 
   notifyStockAdjustment(productName: string, quantity: number, type: string, userId?: string): void {
-    // COMPLETELY DISABLED - No stock adjustment notifications
     return;
   }
 

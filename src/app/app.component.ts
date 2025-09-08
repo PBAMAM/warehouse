@@ -31,6 +31,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.setupRouteTracking();
+    // Set initial sidebar visibility based on current route
+    this.updateSidebarVisibility();
     // Clear any existing test notifications
     this.notificationService.clearAllNotifications();
   }
@@ -55,7 +57,13 @@ export class AppComponent implements OnInit, OnDestroy {
   private updateSidebarVisibility() {
     // Hide sidebar on auth pages (login, register, forgot-password)
     const authRoutes = ['/login', '/register', '/forgot-password', '/auth/login', '/auth/register', '/auth/forgot-password'];
-    this.showSidebar = !authRoutes.some(route => this.currentRoute.startsWith(route));
+    const isAuthRoute = authRoutes.some(route => this.currentRoute === route || this.currentRoute.startsWith(route + '/'));
+    this.showSidebar = !isAuthRoute;
+    
+    // Debug logging
+    console.log('Current route:', this.currentRoute);
+    console.log('Is auth route:', isAuthRoute);
+    console.log('Show sidebar:', this.showSidebar);
   }
 
   onNotificationClose(notificationId: string) {

@@ -2,6 +2,24 @@
   height: 100vh;
   display: flex;
   overflow: hidden;
+  position: relative;
+}
+
+/* Snackbar Container */
+.snackbar-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 400px;
+  pointer-events: none;
+}
+
+.snackbar-container app-notification-toast {
+  pointer-events: auto;
 }
 
 /* Left Side - Login Form */
