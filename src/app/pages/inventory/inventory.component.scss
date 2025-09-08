@@ -77,6 +77,36 @@
               color: white;
             }
           }
+
+          &.btn-info {
+            background: #17a2b8;
+            color: white;
+
+            &:hover {
+              background: #138496;
+              transform: translateY(-2px);
+            }
+          }
+
+          &.btn-warning {
+            background: #ffc107;
+            color: #212529;
+
+            &:hover {
+              background: #e0a800;
+              transform: translateY(-2px);
+            }
+          }
+
+          &.btn-success {
+            background: #28a745;
+            color: white;
+
+            &:hover {
+              background: #218838;
+              transform: translateY(-2px);
+            }
+          }
         }
       }
     }
@@ -379,6 +409,15 @@
                     }
                   }
                 }
+              }
+
+              // Expired date styling
+              &.expired {
+                background: #f8d7da;
+                color: #721c24;
+                font-weight: 600;
+                padding: 0.25rem 0.5rem;
+                border-radius: 4px;
               }
             }
           }
@@ -999,6 +1038,448 @@
     
     i {
       font-size: 0.625rem;
+    }
+  }
+}
+
+.lot-expiry-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border-left: 3px solid #17a2b8;
+
+  .lot-info, .expiry-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: #495057;
+
+    i {
+      color: #17a2b8;
+      font-size: 0.75rem;
+      width: 14px;
+    }
+
+    span {
+      font-weight: 500;
+    }
+  }
+
+  .expiry-info {
+    color: #dc3545;
+
+    i {
+      color: #dc3545;
+    }
+
+    &.expired {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 600;
+
+      i {
+        color: #721c24;
+      }
+    }
+  }
+}
+
+// Order Modal Styles
+.order-modal {
+  max-width: 900px;
+  width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+
+  .modal-body {
+    padding: 2rem;
+  }
+
+  .order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #3498db;
+
+    .order-number {
+      h4 {
+        margin: 0 0 0.5rem 0;
+        color: #2c3e50;
+        font-size: 1.5rem;
+      }
+
+      .order-status {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+
+        &.status-pending {
+          background: #fff3cd;
+          color: #856404;
+        }
+
+        &.status-confirmed {
+          background: #d1ecf1;
+          color: #0c5460;
+        }
+
+        &.status-processing {
+          background: #d4edda;
+          color: #155724;
+        }
+
+        &.status-shipped {
+          background: #cce5ff;
+          color: #004085;
+        }
+
+        &.status-delivered {
+          background: #d1f2eb;
+          color: #0f5132;
+        }
+
+        &.status-cancelled {
+          background: #f8d7da;
+          color: #721c24;
+        }
+      }
+    }
+
+    .order-dates {
+      text-align: right;
+      font-size: 0.875rem;
+      color: #666;
+
+      p {
+        margin: 0.25rem 0;
+      }
+    }
+  }
+
+  .customer-section,
+  .address-section,
+  .order-items-section,
+  .additional-info {
+    margin-bottom: 2rem;
+
+    h4 {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      color: #2c3e50;
+      font-size: 1.1rem;
+      border-bottom: 2px solid #ecf0f1;
+      padding-bottom: 0.5rem;
+
+      i {
+        color: #3498db;
+      }
+    }
+  }
+
+  .customer-info,
+  .address-info {
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border-left: 3px solid #17a2b8;
+
+    p {
+      margin: 0.5rem 0;
+      color: #495057;
+    }
+  }
+
+  .order-items-table {
+    overflow-x: auto;
+
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+
+      th, td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid #dee2e6;
+      }
+
+      th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #495057;
+      }
+
+      .product-cell {
+        .product-info {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+
+          .product-image {
+            width: 40px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+          }
+
+          .product-details {
+            h5 {
+              margin: 0 0 0.25rem 0;
+              font-size: 0.9rem;
+              color: #2c3e50;
+            }
+
+            p {
+              margin: 0;
+              font-size: 0.8rem;
+              color: #6c757d;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .order-summary {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #dee2e6;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &.total-row {
+        font-size: 1.1rem;
+        margin-top: 0.5rem;
+        padding-top: 1rem;
+        border-top: 2px solid #3498db;
+        border-bottom: none;
+      }
+    }
+  }
+
+  .additional-info {
+    .info-content {
+      padding: 1rem;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border-left: 3px solid #ffc107;
+
+      p {
+        margin: 0.5rem 0;
+        color: #495057;
+      }
+    }
+  }
+}
+
+// Product Detail Modal Styles
+.product-detail-modal {
+  max-width: 800px;
+  width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+
+  .modal-body {
+    padding: 2rem;
+  }
+
+  .product-header {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #3498db;
+
+    .product-image-section {
+      .product-main-image {
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 2px solid #dee2e6;
+      }
+    }
+
+    .product-basic-info {
+      flex: 1;
+
+      h2 {
+        margin: 0 0 0.5rem 0;
+        color: #2c3e50;
+        font-size: 1.8rem;
+      }
+
+      .product-brand {
+        margin: 0 0 0.5rem 0;
+        color: #6c757d;
+        font-size: 1.1rem;
+        font-weight: 500;
+      }
+
+      .product-sku {
+        margin: 0 0 1rem 0;
+        color: #495057;
+        font-family: 'Courier New', monospace;
+        background: #e9ecef;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        display: inline-block;
+      }
+
+      .product-status {
+        .status-badge {
+          display: inline-block;
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
+          font-size: 0.9rem;
+          font-weight: 600;
+          text-transform: uppercase;
+
+          &.low-stock {
+            background: #fff3cd;
+            color: #856404;
+          }
+
+          &.out-of-stock {
+            background: #f8d7da;
+            color: #721c24;
+          }
+
+          &.available {
+            background: #d1f2eb;
+            color: #0f5132;
+          }
+        }
+      }
+    }
+  }
+
+  .product-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+
+    .detail-section {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 1.5rem;
+      border-left: 3px solid #17a2b8;
+
+      h4 {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0 0 1rem 0;
+        color: #2c3e50;
+        font-size: 1.1rem;
+        border-bottom: 2px solid #ecf0f1;
+        padding-bottom: 0.5rem;
+
+        i {
+          color: #17a2b8;
+        }
+      }
+
+      .detail-content {
+        .detail-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0.5rem 0;
+          border-bottom: 1px solid #dee2e6;
+
+          &:last-child {
+            border-bottom: none;
+          }
+
+          .label {
+            font-weight: 600;
+            color: #495057;
+            min-width: 120px;
+          }
+
+          .value {
+            color: #2c3e50;
+            text-align: right;
+            flex: 1;
+
+            &.low-stock {
+              color: #856404;
+              font-weight: 600;
+            }
+
+            &.out-of-stock {
+              color: #721c24;
+              font-weight: 600;
+            }
+
+            &.expired {
+              color: #dc3545;
+              font-weight: 600;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .description-section,
+  .notes-section {
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 3px solid #ffc107;
+
+    h4 {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0 0 1rem 0;
+      color: #2c3e50;
+      font-size: 1.1rem;
+      border-bottom: 2px solid #ecf0f1;
+      padding-bottom: 0.5rem;
+
+      i {
+        color: #ffc107;
+      }
+    }
+
+    p {
+      margin: 0;
+      color: #495057;
+      line-height: 1.6;
     }
   }
 }

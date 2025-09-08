@@ -131,7 +131,8 @@
             <th>SKU</th>
             <th>Category</th>
             <th>Warehouse</th>
-            <th>Location</th>
+            <th>LOT</th>
+            <th>Expire Date</th>
             <th>Stock</th>
             <th>Unit Price</th>
             <th>Total Value</th>
@@ -161,7 +162,8 @@
                 {{ getWarehouseName(item.warehouseId) }}
               </button>
             </td>
-            <td>{{ item.location }}</td>
+            <td>{{ item.batchNumber || 'N/A' }}</td>
+            <td [class.expired]="isExpired(item.expiryDate)">{{ formatDateForDisplay(item.expiryDate) }}</td>
             <td class="stock-cell">
               <div class="stock-info">
                 <span class="stock-quantity" 
@@ -190,6 +192,11 @@
                         (click)="viewProduct(item)"
                         title="View Details">
                   <i class="fas fa-eye"></i>
+                </button>
+                <button class="btn btn-sm btn-info" 
+                        (click)="viewOrdersForProduct(item)"
+                        title="View Orders">
+                  <i class="fas fa-shopping-cart"></i>
                 </button>
                 <button class="btn btn-sm btn-primary" 
                         (click)="editProduct(item)"
@@ -247,6 +254,16 @@
               {{ item.location }}
             </span>
           </div>
+          <div class="lot-expiry-info" *ngIf="item.batchNumber || item.expiryDate">
+            <div class="lot-info" *ngIf="item.batchNumber">
+              <i class="fas fa-barcode"></i>
+              <span>LOT: {{ item.batchNumber }}</span>
+            </div>
+            <div class="expiry-info" *ngIf="item.expiryDate" [class.expired]="isExpired(item.expiryDate)">
+              <i class="fas fa-calendar-alt"></i>
+              <span>Expires: {{ formatDateForDisplay(item.expiryDate) }}</span>
+            </div>
+          </div>
           <div class="stock-info">
             <div class="stock-quantity" 
                  [class.low-stock]="item.quantity <= item.reorderPoint"
@@ -266,6 +283,9 @@
           <div class="action-buttons">
             <button class="btn btn-sm btn-outline" (click)="viewProduct(item)">
               <i class="fas fa-eye"></i>
+            </button>
+            <button class="btn btn-sm btn-info" (click)="viewOrdersForProduct(item)">
+              <i class="fas fa-shopping-cart"></i>
             </button>
             <button class="btn btn-sm btn-primary" 
                     (click)="editProduct(item)"
@@ -374,13 +394,25 @@
           <label for="description">Description</label>
           <textarea id="description" formControlName="description" rows="3"></textarea>
         </div>
-        <div class="form-group">
-          <label for="barcode">Barcode</label>
-          <input type="text" id="barcode" formControlName="barcode">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="barcode">Barcode</label>
+            <input type="text" id="barcode" formControlName="barcode">
+          </div>
+          <div class="form-group">
+            <label for="batchNumber">LOT Number</label>
+            <input type="text" id="batchNumber" formControlName="batchNumber" placeholder="Enter LOT number">
+          </div>
         </div>
-        <div class="form-group">
-          <label for="imageUrl">Image URL</label>
-          <input type="url" id="imageUrl" formControlName="imageUrl" placeholder="Leave empty for default icon">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="expiryDate">Expire Date</label>
+            <input type="date" id="expiryDate" formControlName="expiryDate">
+          </div>
+          <div class="form-group">
+            <label for="imageUrl">Image URL</label>
+            <input type="url" id="imageUrl" formControlName="imageUrl" placeholder="Leave empty for default icon">
+          </div>
         </div>
         <div class="form-group">
           <label for="warehouseId">Warehouse *</label>
@@ -445,6 +477,16 @@
         <div class="form-group">
           <label for="reason">Reason *</label>
           <input type="text" id="reason" formControlName="reason" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="batchNumber">LOT Number</label>
+            <input type="text" id="batchNumber" formControlName="batchNumber" placeholder="Enter LOT number">
+          </div>
+          <div class="form-group">
+            <label for="expiryDate">Expire Date</label>
+            <input type="date" id="expiryDate" formControlName="expiryDate">
+          </div>
         </div>
         <div class="form-group">
           <label for="notes">Notes</label>
@@ -537,6 +579,303 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" (click)="closeCategoryModal()">
+        <i class="fas fa-times"></i>
+        Close
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Product Detail Modal -->
+<div class="modal" [class.active]="showProductDetailModal" *ngIf="showProductDetailModal">
+  <div class="modal-backdrop" (click)="closeProductDetailModal()"></div>
+  <div class="modal-content product-detail-modal">
+    <div class="modal-header">
+      <h3>
+        <i class="fas fa-box"></i>
+        Product Details
+      </h3>
+      <button class="btn btn-close" (click)="closeProductDetailModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body" *ngIf="selectedItem">
+      <!-- Product Header -->
+      <div class="product-header">
+        <div class="product-image-section">
+          <img [src]="selectedItem.product.imageUrl || 'assets/images/default-product.svg'" 
+               [alt]="selectedItem.product.name" 
+               class="product-main-image">
+        </div>
+        <div class="product-basic-info">
+          <h2>{{ selectedItem.product.name }}</h2>
+          <p class="product-brand">{{ selectedItem.product.brand }}</p>
+          <p class="product-sku">SKU: {{ selectedItem.product.sku }}</p>
+          <div class="product-status">
+            <span class="status-badge" 
+                  [class.low-stock]="selectedItem.quantity <= selectedItem.reorderPoint && selectedItem.quantity > 0"
+                  [class.out-of-stock]="selectedItem.quantity === 0"
+                  [class.available]="selectedItem.quantity > selectedItem.reorderPoint">
+              {{ getStockStatus(selectedItem) }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Product Details Grid -->
+      <div class="product-details-grid">
+        <div class="detail-section">
+          <h4><i class="fas fa-info-circle"></i> Basic Information</h4>
+          <div class="detail-content">
+            <div class="detail-row">
+              <span class="label">Category:</span>
+              <span class="value">{{ selectedItem.product.category }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Unit:</span>
+              <span class="value">{{ selectedItem.product.unit }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Weight:</span>
+              <span class="value">{{ selectedItem.product.weight || 'N/A' }} kg</span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Barcode:</span>
+              <span class="value">{{ selectedItem.product.barcode || 'N/A' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h4><i class="fas fa-dollar-sign"></i> Pricing</h4>
+          <div class="detail-content">
+            <div class="detail-row">
+              <span class="label">Unit Price:</span>
+              <span class="value">{{ selectedItem.product.unitPrice | currency }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Cost Price:</span>
+              <span class="value">{{ selectedItem.product.costPrice | currency }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Total Value:</span>
+              <span class="value">{{ (selectedItem.quantity * selectedItem.product.unitPrice) | currency }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h4><i class="fas fa-warehouse"></i> Inventory</h4>
+          <div class="detail-content">
+            <div class="detail-row">
+              <span class="label">Current Stock:</span>
+              <span class="value" [class.low-stock]="selectedItem.quantity <= selectedItem.reorderPoint"
+                    [class.out-of-stock]="selectedItem.quantity === 0">
+                {{ selectedItem.quantity }} {{ selectedItem.product.unit }}
+              </span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Min Stock Level:</span>
+              <span class="value">{{ selectedItem.minStockLevel }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Max Stock Level:</span>
+              <span class="value">{{ selectedItem.maxStockLevel }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Reorder Point:</span>
+              <span class="value">{{ selectedItem.reorderPoint }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Location:</span>
+              <span class="value">{{ selectedItem.location || 'N/A' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h4><i class="fas fa-barcode"></i> LOT & Expiry</h4>
+          <div class="detail-content">
+            <div class="detail-row">
+              <span class="label">LOT Number:</span>
+              <span class="value">{{ selectedItem.batchNumber || 'N/A' }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Expiry Date:</span>
+              <span class="value" [class.expired]="isExpired(selectedItem.expiryDate)">
+                {{ formatDateForDisplay(selectedItem.expiryDate) }}
+              </span>
+            </div>
+            <div class="detail-row" *ngIf="selectedItem.supplierName">
+              <span class="label">Supplier:</span>
+              <span class="value">{{ selectedItem.supplierName }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="description-section" *ngIf="selectedItem.product.description">
+        <h4><i class="fas fa-align-left"></i> Description</h4>
+        <p>{{ selectedItem.product.description }}</p>
+      </div>
+
+      <!-- Notes -->
+      <div class="notes-section" *ngIf="selectedItem.notes">
+        <h4><i class="fas fa-sticky-note"></i> Notes</h4>
+        <p>{{ selectedItem.notes }}</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeProductDetailModal()">
+        <i class="fas fa-times"></i>
+        Close
+      </button>
+      <button class="btn btn-primary" (click)="editProduct(selectedItem!)" *ngIf="canManageInventory()">
+        <i class="fas fa-edit"></i>
+        Edit Product
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- View Order Modal -->
+<div class="modal" [class.active]="showOrderModal" *ngIf="showOrderModal">
+  <div class="modal-backdrop" (click)="closeOrderModal()"></div>
+  <div class="modal-content order-modal">
+    <div class="modal-header">
+      <h3>
+        <i class="fas fa-shopping-cart"></i>
+        Order Details
+      </h3>
+      <button class="btn btn-close" (click)="closeOrderModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body" *ngIf="selectedOrder">
+      <!-- Order Header Info -->
+      <div class="order-header">
+        <div class="order-number">
+          <h4>Order #{{ selectedOrder.orderNumber }}</h4>
+          <span class="order-status" [class]="'status-' + selectedOrder.status">
+            {{ selectedOrder.status | titlecase }}
+          </span>
+        </div>
+        <div class="order-dates">
+          <p><strong>Created:</strong> {{ selectedOrder.createdAt | date:'medium' }}</p>
+          <p *ngIf="selectedOrder.expectedDeliveryDate">
+            <strong>Expected Delivery:</strong> {{ selectedOrder.expectedDeliveryDate | date:'medium' }}
+          </p>
+          <p *ngIf="selectedOrder.shippedAt">
+            <strong>Shipped:</strong> {{ selectedOrder.shippedAt | date:'medium' }}
+          </p>
+          <p *ngIf="selectedOrder.deliveredAt">
+            <strong>Delivered:</strong> {{ selectedOrder.deliveredAt | date:'medium' }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Customer Information -->
+      <div class="customer-section">
+        <h4><i class="fas fa-user"></i> Customer Information</h4>
+        <div class="customer-info">
+          <div class="customer-details">
+            <p><strong>Name:</strong> {{ selectedOrder.customerName }}</p>
+            <p><strong>Email:</strong> {{ selectedOrder.customerEmail }}</p>
+            <p><strong>Phone:</strong> {{ selectedOrder.customerPhone }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Shipping Address -->
+      <div class="address-section">
+        <h4><i class="fas fa-shipping-fast"></i> Shipping Address</h4>
+        <div class="address-info">
+          <p>{{ selectedOrder.shippingAddress.street }}</p>
+          <p>{{ selectedOrder.shippingAddress.city }}, {{ selectedOrder.shippingAddress.state }} {{ selectedOrder.shippingAddress.zipCode }}</p>
+          <p>{{ selectedOrder.shippingAddress.country }}</p>
+        </div>
+      </div>
+
+      <!-- Order Items -->
+      <div class="order-items-section">
+        <h4><i class="fas fa-boxes"></i> Order Items</h4>
+        <div class="order-items-table">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>SKU</th>
+                <th>Quantity</th>
+                <th>Unit Price</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of selectedOrder.items">
+                <td class="product-cell">
+                  <div class="product-info">
+                    <img [src]="item.product.imageUrl || 'assets/images/default-product.svg'" 
+                         [alt]="item.product.name" 
+                         class="product-image">
+                    <div class="product-details">
+                      <h5>{{ item.product.name }}</h5>
+                      <p>{{ item.product.brand }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td>{{ item.product.sku }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.unitPrice | currency }}</td>
+                <td>{{ item.totalPrice | currency }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Order Summary -->
+      <div class="order-summary">
+        <div class="summary-row">
+          <span>Subtotal:</span>
+          <span>{{ selectedOrder.subtotal | currency }}</span>
+        </div>
+        <div class="summary-row" *ngIf="selectedOrder.discountAmount > 0">
+          <span>Discount:</span>
+          <span>-{{ selectedOrder.discountAmount | currency }}</span>
+        </div>
+        <div class="summary-row">
+          <span>Tax:</span>
+          <span>{{ selectedOrder.taxAmount | currency }}</span>
+        </div>
+        <div class="summary-row">
+          <span>Shipping:</span>
+          <span>{{ selectedOrder.shippingAmount | currency }}</span>
+        </div>
+        <div class="summary-row total-row">
+          <span><strong>Total:</strong></span>
+          <span><strong>{{ selectedOrder.totalAmount | currency }}</strong></span>
+        </div>
+      </div>
+
+      <!-- Additional Info -->
+      <div class="additional-info" *ngIf="selectedOrder.notes || selectedOrder.trackingNumber">
+        <h4><i class="fas fa-info-circle"></i> Additional Information</h4>
+        <div class="info-content">
+          <p *ngIf="selectedOrder.trackingNumber">
+            <strong>Tracking Number:</strong> {{ selectedOrder.trackingNumber }}
+          </p>
+          <p *ngIf="selectedOrder.assignedToName">
+            <strong>Assigned To:</strong> {{ selectedOrder.assignedToName }}
+          </p>
+          <p *ngIf="selectedOrder.notes">
+            <strong>Notes:</strong> {{ selectedOrder.notes }}
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeOrderModal()">
         <i class="fas fa-times"></i>
         Close
       </button>

@@ -111,6 +111,7 @@ export class InventoryService {
           lastUpdated: data.lastUpdated?.toDate ? data.lastUpdated.toDate() : data.lastUpdated,
           location: data.location,
           batchNumber: data.batchNumber,
+          expiryDate: data.expiryDate?.toDate ? data.expiryDate.toDate() : data.expiryDate,
           supplierId: data.supplierId,
           supplierName: data.supplierName,
           notes: data.notes
@@ -344,6 +345,7 @@ export class InventoryService {
           lastUpdated: data.lastUpdated?.toDate ? data.lastUpdated.toDate() : data.lastUpdated,
           location: data.location,
           batchNumber: data.batchNumber,
+          expiryDate: data.expiryDate?.toDate ? data.expiryDate.toDate() : data.expiryDate,
           supplierId: data.supplierId,
           supplierName: data.supplierName,
           notes: data.notes

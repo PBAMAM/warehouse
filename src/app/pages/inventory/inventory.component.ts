@@ -8,7 +8,9 @@ import { InventoryService } from '../../core/services/inventory.service';
 import { WarehouseService } from '../../core/services/warehouse.service';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { OrderService } from '../../core/services/order.service';
 import { InventoryItem, Product, StockMovement, Category } from '../../core/models/inventory.model';
+import { Order } from '../../core/models/order.model';
 import { Warehouse } from '../../core/models/warehouse.model';
 import { User } from '../../core/models/user.model';
 
@@ -53,9 +55,14 @@ export class InventoryComponent implements OnInit, OnDestroy {
   showProductModal = false;
   showStockModal = false;
   showCategoryModal = false;
+  showOrderModal = false;
+  showProductDetailModal = false;
   editingProduct: Product | null = null;
+  editingInventoryItem: InventoryItem | null = null;
   selectedItem: InventoryItem | null = null;
   editingCategory: Category | null = null;
+  selectedOrder: Order | null = null;
+  ordersForProduct: Order[] = [];
   
   // Forms
   productForm!: FormGroup;
@@ -72,6 +79,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
     private warehouseService: WarehouseService,
     private authService: AuthService,
     private notificationService: NotificationService,
+    private orderService: OrderService,
     private fb: FormBuilder,
     private router: Router,
     private firestore: AngularFirestore
@@ -112,14 +120,19 @@ export class InventoryComponent implements OnInit, OnDestroy {
       weight: [0, Validators.min(0)],
       description: [''],
       barcode: [''],
+      batchNumber: [''],
+      expiryDate: [''],
       imageUrl: ['assets/images/default-product.svg'],
       warehouseId: ['', Validators.required]
     });
+    
 
     this.stockForm = this.fb.group({
       movementType: ['', Validators.required],
       quantity: [0, [Validators.required, Validators.min(1)]],
       reason: ['', Validators.required],
+      batchNumber: [''],
+      expiryDate: [''],
       notes: ['']
     });
 
@@ -262,8 +275,45 @@ export class InventoryComponent implements OnInit, OnDestroy {
 
   canManageInventory(): boolean {
     const canManage = this.currentUser?.role === 'admin' || this.currentUser?.role === 'manager';
-    console.log('Can manage inventory:', canManage, 'User role:', this.currentUser?.role);
+    console.log('canManageInventory check:', canManage, 'User role:', this.currentUser?.role, 'Current user:', this.currentUser);
     return canManage;
+  }
+
+
+  formatDateForInput(date: Date | string | undefined): string {
+    if (!date) return '';
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    if (isNaN(dateObj.getTime())) return '';
+    return dateObj.toISOString().split('T')[0];
+  }
+
+  isExpired(expiryDate: Date | string | undefined): boolean {
+    if (!expiryDate) return false;
+    const today = new Date();
+    const expiry = typeof expiryDate === 'string' ? new Date(expiryDate) : expiryDate;
+    if (isNaN(expiry.getTime())) return false;
+    return expiry < today;
+  }
+
+  formatDateForDisplay(date: Date | string | undefined): string {
+    console.log('formatDateForDisplay called with:', date, typeof date);
+    if (!date) {
+      console.log('No date provided, returning N/A');
+      return 'N/A';
+    }
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      if (isNaN(dateObj.getTime())) {
+        console.log('Invalid date, returning N/A');
+        return 'N/A';
+      }
+      const formatted = dateObj.toLocaleDateString();
+      console.log('Formatted date:', formatted);
+      return formatted;
+    } catch (error) {
+      console.log('Error formatting date:', error);
+      return 'N/A';
+    }
   }
 
   // Product Management
@@ -274,9 +324,11 @@ export class InventoryComponent implements OnInit, OnDestroy {
   }
 
   editProduct(item: InventoryItem) {
-    console.log('Edit product clicked:', item);
-    alert('Edit button clicked!'); // Temporary debug
     this.editingProduct = item.product;
+    this.editingInventoryItem = item;
+    
+    const formattedExpiryDate = item.expiryDate ? this.formatDateForInput(item.expiryDate) : '';
+    
     this.productForm.patchValue({
       name: item.product.name,
       sku: item.product.sku,
@@ -288,6 +340,8 @@ export class InventoryComponent implements OnInit, OnDestroy {
       weight: item.product.weight,
       description: item.product.description,
       barcode: item.product.barcode,
+      batchNumber: item.batchNumber || '',
+      expiryDate: formattedExpiryDate,
       imageUrl: item.product.imageUrl || 'assets/images/default-product.svg',
       warehouseId: item.warehouseId
     });
@@ -297,6 +351,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
   closeProductModal() {
     this.showProductModal = false;
     this.editingProduct = null;
+    this.editingInventoryItem = null;
     this.productForm.reset();
   }
 
@@ -304,34 +359,48 @@ export class InventoryComponent implements OnInit, OnDestroy {
     if (this.productForm.valid) {
       const productData = this.productForm.value;
       
-      if (this.editingProduct) {
+      // Validate expiry date if provided
+      if (productData.expiryDate) {
+        const expiryDate = new Date(productData.expiryDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+        
+        if (expiryDate < today) {
+          this.notificationService.showError('Expiry date cannot be in the past');
+          return;
+        }
+      }
+      
+      if (this.editingProduct && this.editingInventoryItem) {
         // Update existing inventory item
-        const inventoryItemData = {
+        const { batchNumber, expiryDate, ...productDataWithoutBatchExpiry } = productData;
+        const inventoryItemData: any = {
           product: {
             ...this.editingProduct,
-            ...productData
-          }
+            ...productDataWithoutBatchExpiry
+          },
+          batchNumber: batchNumber || '',
+          expiryDate: expiryDate ? new Date(expiryDate) : undefined
         };
         
-        from(this.inventoryService.updateInventoryItem(this.editingProduct.id!, inventoryItemData))
-          .pipe(takeUntil(this.destroy$))
-          .subscribe({
-            next: () => {
-              this.notificationService.showSuccess('Inventory item updated successfully!');
-              this.closeProductModal();
-            },
-            error: (error: any) => {
-              this.notificationService.showError('Failed to update inventory item');
-              console.error('Error updating inventory item:', error);
-            }
+        // Use Firestore directly to update the inventory document
+        this.firestore.collection('inventory').doc(this.editingInventoryItem.id!).update(inventoryItemData)
+          .then(() => {
+            this.notificationService.showSuccess('Inventory item updated successfully!');
+            this.closeProductModal();
+          })
+          .catch((error: any) => {
+            this.notificationService.showError('Failed to update inventory item');
+            console.error('Error updating inventory item:', error);
           });
       } else {
-        // Create new inventory item
-        const inventoryItemData = {
-          productId: this.firestore.createId(),
+        // Create new inventory item - work directly with inventory collection
+        const { batchNumber, expiryDate, ...productDataWithoutBatchExpiry } = productData;
+        const inventoryItemData: any = {
+          // Store product info directly in the inventory document
           product: {
             id: this.firestore.createId(),
-            ...productData,
+            ...productDataWithoutBatchExpiry,
             createdAt: new Date(),
             updatedAt: new Date()
           },
@@ -344,23 +413,22 @@ export class InventoryComponent implements OnInit, OnDestroy {
           reorderPoint: 10,
           lastUpdated: new Date(),
           location: '',
-          batchNumber: '',
+          batchNumber: batchNumber || '',
+          expiryDate: expiryDate ? new Date(expiryDate) : undefined,
           supplierId: '',
           supplierName: '',
           notes: ''
         };
         
-        from(this.inventoryService.createInventoryItem(inventoryItemData))
-          .pipe(takeUntil(this.destroy$))
-          .subscribe({
-            next: () => {
-              this.notificationService.showSuccess('Inventory item created successfully!');
-              this.closeProductModal();
-            },
-            error: (error: any) => {
-              this.notificationService.showError('Failed to create inventory item');
-              console.error('Error creating inventory item:', error);
-            }
+        // Use Firestore directly to create the inventory document
+        this.firestore.collection('inventory').add(inventoryItemData)
+          .then(() => {
+            this.notificationService.showSuccess('Inventory item created successfully!');
+            this.closeProductModal();
+          })
+          .catch((error: any) => {
+            this.notificationService.showError('Failed to create inventory item');
+            console.error('Error creating inventory item:', error);
           });
       }
     }
@@ -368,7 +436,6 @@ export class InventoryComponent implements OnInit, OnDestroy {
 
   deleteProduct(item: InventoryItem) {
     console.log('Delete inventory item clicked:', item);
-    alert('Delete button clicked!'); // Temporary debug
     if (confirm('Are you sure you want to delete this inventory item?')) {
       from(this.inventoryService.deleteInventoryItem(item.id!))
         .pipe(takeUntil(this.destroy$))
@@ -387,8 +454,55 @@ export class InventoryComponent implements OnInit, OnDestroy {
   }
 
   viewProduct(item: InventoryItem) {
-    // Implement product details view
-    this.notificationService.showInfo('Product details view coming soon!');
+    this.selectedItem = item;
+    this.showProductDetailModal = true;
+  }
+
+  closeProductDetailModal() {
+    this.showProductDetailModal = false;
+    this.selectedItem = null;
+  }
+
+  // Order Management
+  viewOrdersForProduct(item: InventoryItem) {
+    this.selectedItem = item;
+    this.loadOrdersForProduct(item.productId);
+  }
+
+  loadOrdersForProduct(productId: string) {
+    this.orderService.getOrders()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (orders) => {
+          // Filter orders that contain this product
+          this.ordersForProduct = orders.filter(order => 
+            order.items.some(item => item.productId === productId)
+          );
+          
+          if (this.ordersForProduct.length === 0) {
+            this.notificationService.showInfo('No orders found for this product');
+          } else {
+            // Show the first order by default
+            this.selectedOrder = this.ordersForProduct[0];
+            this.showOrderModal = true;
+          }
+        },
+        error: (error) => {
+          this.notificationService.showError('Failed to load orders');
+          console.error('Error loading orders:', error);
+        }
+      });
+  }
+
+  selectOrder(order: Order) {
+    this.selectedOrder = order;
+  }
+
+  closeOrderModal() {
+    this.showOrderModal = false;
+    this.selectedOrder = null;
+    this.selectedItem = null;
+    this.ordersForProduct = [];
   }
 
   // Stock Management
@@ -401,6 +515,10 @@ export class InventoryComponent implements OnInit, OnDestroy {
   adjustStock(item: InventoryItem) {
     this.selectedItem = item;
     this.stockForm.reset();
+    this.stockForm.patchValue({
+      batchNumber: item.batchNumber || '',
+      expiryDate: item.expiryDate ? this.formatDateForInput(item.expiryDate) : ''
+    });
     this.showStockModal = true;
   }
 
@@ -413,6 +531,18 @@ export class InventoryComponent implements OnInit, OnDestroy {
   saveStockAdjustment() {
     if (this.stockForm.valid && this.selectedItem) {
       const stockData = this.stockForm.value;
+      
+      // Validate expiry date if provided
+      if (stockData.expiryDate) {
+        const expiryDate = new Date(stockData.expiryDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+        
+        if (expiryDate < today) {
+          this.notificationService.showError('Expiry date cannot be in the past');
+          return;
+        }
+      }
       const movement: Partial<StockMovement> = {
         productId: this.selectedItem.productId,
         warehouseId: this.selectedItem.warehouseId,
@@ -423,6 +553,24 @@ export class InventoryComponent implements OnInit, OnDestroy {
         userId: this.currentUser?.uid || '',
         userName: this.currentUser?.displayName || 'Unknown User'
       };
+
+      // Update inventory item with new LOT and expiry date if provided
+      if (stockData.batchNumber || stockData.expiryDate) {
+        const updateData: any = {};
+        if (stockData.batchNumber) updateData.batchNumber = stockData.batchNumber;
+        if (stockData.expiryDate) updateData.expiryDate = new Date(stockData.expiryDate);
+        
+        from(this.inventoryService.updateInventoryItem(this.selectedItem.id!, updateData))
+          .pipe(takeUntil(this.destroy$))
+          .subscribe({
+            next: () => {
+              console.log('Inventory item updated with LOT/expiry info');
+            },
+            error: (error: any) => {
+              console.error('Error updating inventory item with LOT/expiry info:', error);
+            }
+          });
+      }
 
       this.inventoryService.adjustStock(movement)
         .pipe(takeUntil(this.destroy$))
