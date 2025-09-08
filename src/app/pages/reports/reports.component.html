@@ -22,36 +22,64 @@
           <i class="fas fa-file-export"></i>
           Export Data
         </button>
+        <button class="btn btn-warning" (click)="clearStockNotifications()" title="Clear stock adjustment notifications">
+          <i class="fas fa-bell-slash"></i>
+          Clear Stock Notifications
+        </button>
+        <button class="btn btn-danger" (click)="clearAllNotifications()" title="Clear all notifications">
+          <i class="fas fa-trash"></i>
+          Clear All Notifications
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- Date Range Filter -->
-  <div class="reports-filters">
-    <div class="filters-row">
-      <div class="date-range">
-        <label>Date Range:</label>
-        <input type="date" [(ngModel)]="startDate" (change)="onDateChange()">
-        <span>to</span>
-        <input type="date" [(ngModel)]="endDate" (change)="onDateChange()">
-      </div>
-      <div class="filter-group">
-        <select [(ngModel)]="reportType" (change)="onReportTypeChange()">
-          <option value="overview">Overview</option>
-          <option value="inventory">Inventory</option>
-          <option value="orders">Orders</option>
-          <option value="warehouse">Warehouse</option>
-          <option value="financial">Financial</option>
-        </select>
-        <select [(ngModel)]="timePeriod" (change)="onTimePeriodChange()">
-          <option value="daily">Daily</option>
-          <option value="weekly">Weekly</option>
-          <option value="monthly">Monthly</option>
-          <option value="yearly">Yearly</option>
-        </select>
-      </div>
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="isLoading">
+    <div class="loading-content">
+      <div class="spinner"></div>
+      <p>Loading reports data...</p>
     </div>
   </div>
+
+  <!-- Error State -->
+  <div class="error-container" *ngIf="hasError">
+    <div class="error-content">
+      <i class="fas fa-exclamation-triangle"></i>
+      <h3>Error Loading Reports</h3>
+      <p>{{ errorMessage }}</p>
+      <button class="btn btn-primary" (click)="loadData()">Retry</button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div *ngIf="!isLoading && !hasError">
+    <!-- Date Range Filter -->
+    <div class="reports-filters">
+      <div class="filters-row">
+        <div class="date-range">
+          <label>Date Range:</label>
+          <input type="date" [(ngModel)]="startDate" (change)="onDateChange()">
+          <span>to</span>
+          <input type="date" [(ngModel)]="endDate" (change)="onDateChange()">
+        </div>
+        <div class="filter-group">
+          <select [(ngModel)]="reportType" (change)="onReportTypeChange()">
+            <option value="overview">Overview</option>
+            <option value="inventory">Inventory</option>
+            <option value="orders">Orders</option>
+            <option value="warehouse">Warehouse</option>
+            <option value="financial">Financial</option>
+          </select>
+          <select [(ngModel)]="timePeriod" (change)="onTimePeriodChange()">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="yearly">Yearly</option>
+          </select>
+        </div>
+      </div>
+    </div>
 
   <!-- Key Metrics Cards -->
   <div class="metrics-grid">
@@ -124,7 +152,7 @@
         </div>
       </div>
       <div class="chart-content">
-        <canvas #revenueChart></canvas>
+        <canvas id="revenueChart" width="400" height="300"></canvas>
       </div>
     </div>
 
@@ -133,7 +161,7 @@
         <h3>Order Status Distribution</h3>
       </div>
       <div class="chart-content">
-        <canvas #orderStatusChart></canvas>
+        <canvas id="orderStatusChart" width="400" height="300"></canvas>
       </div>
     </div>
 
@@ -142,7 +170,7 @@
         <h3>Top Products by Sales</h3>
       </div>
       <div class="chart-content">
-        <canvas #topProductsChart></canvas>
+        <canvas id="topProductsChart" width="400" height="300"></canvas>
       </div>
     </div>
 
@@ -151,7 +179,7 @@
         <h3>Warehouse Utilization</h3>
       </div>
       <div class="chart-content">
-        <canvas #warehouseUtilizationChart></canvas>
+        <canvas id="warehouseUtilizationChart" width="400" height="300"></canvas>
       </div>
     </div>
   </div>
@@ -177,7 +205,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let order of recentOrders">
+            <tr *ngFor="let order of recentOrders; else noOrders">
               <td>{{ order.orderNumber }}</td>
               <td>{{ order.customerName }}</td>
               <td>{{ order.totalAmount | currency }}</td>
@@ -188,6 +216,14 @@
               </td>
               <td>{{ order.createdAt | date:'short' }}</td>
             </tr>
+            <ng-template #noOrders>
+              <tr>
+                <td colspan="5" class="empty-state">
+                  <i class="fas fa-shopping-cart"></i>
+                  <p>No recent orders found</p>
+                </td>
+              </tr>
+            </ng-template>
           </tbody>
         </table>
       </div>
@@ -212,7 +248,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let item of lowStockItems">
+            <tr *ngFor="let item of lowStockItems; else noLowStock">
               <td>{{ item.product.name }}</td>
               <td>{{ item.product.sku }}</td>
               <td>{{ item.quantity }}</td>
@@ -223,6 +259,14 @@
                 </span>
               </td>
             </tr>
+            <ng-template #noLowStock>
+              <tr>
+                <td colspan="5" class="empty-state">
+                  <i class="fas fa-check-circle"></i>
+                  <p>All items are well stocked</p>
+                </td>
+              </tr>
+            </ng-template>
           </tbody>
         </table>
       </div>
@@ -275,4 +319,5 @@
       </div>
     </div>
   </div>
+  </div> <!-- End of main content wrapper -->
 </div>

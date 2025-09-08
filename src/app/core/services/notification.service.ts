@@ -48,6 +48,11 @@ export class NotificationService {
 
   // Check if notification should be shown based on settings and throttling
   private shouldShowNotification(type: string, category?: string): boolean {
+    // Always block stock adjustment notifications regardless of settings
+    if (category === 'stock' || category === 'inventory') {
+      return false;
+    }
+
     // Check user settings
     switch (type) {
       case 'success':
@@ -98,10 +103,14 @@ export class NotificationService {
     const currentNotifications = this.notificationsSubject.value;
     const filteredNotifications = currentNotifications.filter(notification => 
       notification.category !== 'stock' && 
-      !notification.title.includes('Stock Adjustment')
+      !notification.title.includes('Stock Adjustment') &&
+      !notification.title.includes('Stock adjustment') &&
+      !notification.message.includes('stock') &&
+      !notification.message.includes('Stock')
     );
     this.notificationsSubject.next(filteredNotifications);
     this.updateUnreadCount();
+    console.log('Cleared stock adjustment notifications. Remaining:', filteredNotifications.length);
   }
 
   // Request notification permission
@@ -164,6 +173,14 @@ export class NotificationService {
 
   // Add a new notification (with duplicate prevention)
   addNotification(notification: Omit<Notification, 'id' | 'timestamp' | 'read'>): void {
+    // Block any stock-related notifications
+    if (notification.category === 'stock' || 
+        notification.title.toLowerCase().includes('stock') ||
+        notification.message.toLowerCase().includes('stock')) {
+      console.log('Stock notification blocked:', notification.title);
+      return;
+    }
+
     const newNotification: Notification = {
       ...notification,
       id: this.generateId(),
@@ -460,6 +477,8 @@ export class NotificationService {
   }
 
   notifyStockAdjustment(productName: string, quantity: number, type: string, userId?: string): void {
+    // Stock adjustment notifications are completely disabled to prevent spam
+    console.log('Stock adjustment notification blocked:', { productName, quantity, type });
     return;
   }
 
