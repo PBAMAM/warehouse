@@ -57,6 +57,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
   showCategoryModal = false;
   showOrderModal = false;
   showProductDetailModal = false;
+  showNotificationSettingsModal = false;
   editingProduct: Product | null = null;
   editingInventoryItem: InventoryItem | null = null;
   selectedItem: InventoryItem | null = null;
@@ -73,6 +74,16 @@ export class InventoryComponent implements OnInit, OnDestroy {
   warehouses: Warehouse[] = [];
   categories: Category[] = [];
   currentUser: User | null = null;
+  
+  // Notification settings
+  notificationSettings = {
+    showSuccessNotifications: false,
+    showInfoNotifications: false,
+    showWarningNotifications: true,
+    showErrorNotifications: true,
+    showStockAdjustmentNotifications: false,
+    throttleDuration: 5
+  };
 
   constructor(
     private inventoryService: InventoryService,
@@ -91,6 +102,10 @@ export class InventoryComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.loadData();
     this.setupFilters();
+    this.loadNotificationSettings();
+    
+    // Clear any existing stock adjustment notifications
+    this.notificationService.clearStockAdjustmentNotifications();
     
     // Direct subscription to inventory data
     this.inventoryService.getInventory()
@@ -386,7 +401,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
         // Use Firestore directly to update the inventory document
         this.firestore.collection('inventory').doc(this.editingInventoryItem.id!).update(inventoryItemData)
           .then(() => {
-            this.notificationService.showSuccess('Inventory item updated successfully!');
+            this.notificationService.showSuccess('Inventory item updated successfully!', 'Success', 'inventory');
             this.closeProductModal();
           })
           .catch((error: any) => {
@@ -423,7 +438,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
         // Use Firestore directly to create the inventory document
         this.firestore.collection('inventory').add(inventoryItemData)
           .then(() => {
-            this.notificationService.showSuccess('Inventory item created successfully!');
+            this.notificationService.showSuccess('Inventory item created successfully!', 'Success', 'inventory');
             this.closeProductModal();
           })
           .catch((error: any) => {
@@ -441,7 +456,10 @@ export class InventoryComponent implements OnInit, OnDestroy {
         .pipe(takeUntil(this.destroy$))
         .subscribe({
           next: () => {
-            this.notificationService.showSuccess('Inventory item deleted successfully!');
+            // Only show delete notification for important items
+            if (item.quantity > 0) {
+              this.notificationService.showWarning(`Deleted ${item.product.name} with ${item.quantity} units in stock`, 'Item Deleted', 'inventory');
+            }
             // Refresh the inventory data
             this.loadData();
           },
@@ -576,7 +594,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
         .pipe(takeUntil(this.destroy$))
         .subscribe({
           next: () => {
-            this.notificationService.showSuccess('Stock adjusted successfully!');
+            // Success notification is handled by the service for significant adjustments only
             this.closeStockModal();
             // Refresh the inventory data to show updated quantities
             this.loadData();
@@ -594,7 +612,8 @@ export class InventoryComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
-          this.notificationService.showSuccess('Inventory exported successfully!');
+          // Export completed silently - user can see the file download
+          console.log('Inventory exported successfully');
         },
         error: (error) => {
           this.notificationService.showError('Failed to export inventory');
@@ -685,5 +704,37 @@ export class InventoryComponent implements OnInit, OnDestroy {
           }
         });
     }
+  }
+
+  // Notification Settings
+  loadNotificationSettings() {
+    const settings = this.notificationService.getSettings();
+    this.notificationSettings = { ...settings };
+  }
+
+  openNotificationSettings() {
+    this.loadNotificationSettings();
+    this.showNotificationSettingsModal = true;
+  }
+
+  closeNotificationSettings() {
+    this.showNotificationSettingsModal = false;
+  }
+
+  saveNotificationSettings() {
+    // Convert throttle duration from seconds to milliseconds
+    const settings = {
+      ...this.notificationSettings,
+      throttleDuration: this.notificationSettings.throttleDuration * 1000
+    };
+    
+    this.notificationService.updateSettings(settings);
+    this.notificationService.showSuccess('Notification settings saved!', 'Settings Updated', 'settings');
+    this.closeNotificationSettings();
+  }
+
+  clearStockNotifications() {
+    this.notificationService.clearStockAdjustmentNotifications();
+    this.notificationService.showSuccess('Stock notifications cleared!', 'Cleared', 'settings');
   }
 }

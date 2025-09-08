@@ -13,6 +13,9 @@ export interface Notification {
   read: boolean;
   userId?: string;
   actionUrl?: string;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  category?: string;
+  suppressible?: boolean; // Can be suppressed by user settings
 }
 
 @Injectable({
@@ -20,6 +23,16 @@ export interface Notification {
 })
 export class NotificationService {
   private notificationsSubject = new BehaviorSubject<Notification[]>([]);
+  private notificationThrottle = new Map<string, number>(); // Track last notification time by type
+  private userSettings = {
+    showSuccessNotifications: false, // Don't show success notifications by default
+    showInfoNotifications: false,    // Don't show info notifications by default
+    showWarningNotifications: true,  // Show warnings
+    showErrorNotifications: true,    // Show errors
+    showStockAdjustmentNotifications: false, // Don't show stock adjustment notifications by default
+    throttleDuration: 5000,          // 5 seconds throttle for same type
+    maxNotificationsPerMinute: 10    // Limit notifications per minute
+  };
   public notifications$ = this.notificationsSubject.asObservable();
 
   private unreadCountSubject = new BehaviorSubject<number>(0);
@@ -31,6 +44,64 @@ export class NotificationService {
   ) {
     this.requestPermission();
     this.listenToNotifications();
+  }
+
+  // Check if notification should be shown based on settings and throttling
+  private shouldShowNotification(type: string, category?: string): boolean {
+    // Check user settings
+    switch (type) {
+      case 'success':
+        if (!this.userSettings.showSuccessNotifications) return false;
+        break;
+      case 'info':
+        if (!this.userSettings.showInfoNotifications) return false;
+        break;
+      case 'warning':
+        if (!this.userSettings.showWarningNotifications) return false;
+        break;
+      case 'error':
+        if (!this.userSettings.showErrorNotifications) return false;
+        break;
+    }
+
+    // Check throttling
+    const throttleKey = `${type}-${category || 'default'}`;
+    const now = Date.now();
+    const lastNotification = this.notificationThrottle.get(throttleKey);
+    
+    // Use longer throttle duration for stock adjustments
+    const throttleDuration = category === 'stock' ? 
+      Math.max(this.userSettings.throttleDuration * 3, 15000) : // At least 15 seconds for stock
+      this.userSettings.throttleDuration;
+    
+    if (lastNotification && (now - lastNotification) < throttleDuration) {
+      return false;
+    }
+
+    // Update throttle time
+    this.notificationThrottle.set(throttleKey, now);
+    return true;
+  }
+
+  // Update user notification settings
+  updateSettings(settings: Partial<typeof this.userSettings>): void {
+    this.userSettings = { ...this.userSettings, ...settings };
+  }
+
+  // Get current settings
+  getSettings() {
+    return { ...this.userSettings };
+  }
+
+  // Clear all stock adjustment notifications
+  clearStockAdjustmentNotifications(): void {
+    const currentNotifications = this.notificationsSubject.value;
+    const filteredNotifications = currentNotifications.filter(notification => 
+      notification.category !== 'stock' && 
+      !notification.title.includes('Stock Adjustment')
+    );
+    this.notificationsSubject.next(filteredNotifications);
+    this.updateUnreadCount();
   }
 
   // Request notification permission
@@ -291,24 +362,62 @@ export class NotificationService {
   }
 
   // Show success notification
-  showSuccess(message: string, title: string = 'Success'): void {
-    this.addNotification({ title, message, type: 'success' });
+  showSuccess(message: string, title: string = 'Success', category?: string): void {
+    if (this.shouldShowNotification('success', category)) {
+      this.addNotification({ 
+        title, 
+        message, 
+        type: 'success', 
+        priority: 'low',
+        category: category || 'general',
+        suppressible: true
+      });
+    }
   }
 
   // Show warning notification
-  showWarning(message: string, title: string = 'Warning'): void {
-    this.addNotification({ title, message, type: 'warning' });
+  showWarning(message: string, title: string = 'Warning', category?: string): void {
+    if (this.shouldShowNotification('warning', category)) {
+      this.addNotification({ 
+        title, 
+        message, 
+        type: 'warning', 
+        priority: 'medium',
+        category: category || 'general',
+        suppressible: true
+      });
+    }
   }
 
   // Show info notification
-  showInfo(message: string, title: string = 'Info'): void {
-    this.addNotification({ title, message, type: 'info' });
+  showInfo(message: string, title: string = 'Info', category?: string): void {
+    if (this.shouldShowNotification('info', category)) {
+      this.addNotification({ 
+        title, 
+        message, 
+        type: 'info', 
+        priority: 'low',
+        category: category || 'general',
+        suppressible: true
+      });
+    }
   }
 
-  // Show error notification (no-op to prevent error spam)
-  showError(message: string, title: string = 'Error'): void {
-    // Do nothing - errors are logged to console but not shown as notifications
-    console.error(`${title}: ${message}`);
+  // Show error notification
+  showError(message: string, title: string = 'Error', category?: string): void {
+    if (this.shouldShowNotification('error', category)) {
+      this.addNotification({ 
+        title, 
+        message, 
+        type: 'error', 
+        priority: 'high',
+        category: category || 'general',
+        suppressible: false
+      });
+    } else {
+      // Log to console even if not shown
+      console.error(`${title}: ${message}`);
+    }
   }
 
   // Real-time activity notifications
@@ -317,6 +426,9 @@ export class NotificationService {
       title: 'New Order Created',
       message: `Order ${orderNumber} created by ${customerName}`,
       type: 'info',
+      priority: 'medium',
+      category: 'orders',
+      suppressible: true,
       userId: userId,
       actionUrl: '/orders'
     });
@@ -327,6 +439,9 @@ export class NotificationService {
       title: 'Order Updated',
       message: `Order ${orderNumber} status changed to ${status}`,
       type: 'info',
+      priority: 'low',
+      category: 'orders',
+      suppressible: true,
       userId: userId,
       actionUrl: '/orders'
     });
@@ -337,19 +452,17 @@ export class NotificationService {
       title: 'Inventory Updated',
       message: `${action} performed on ${productName}`,
       type: 'info',
+      priority: 'low',
+      category: 'inventory',
+      suppressible: true,
       userId: userId,
       actionUrl: '/inventory'
     });
   }
 
   notifyStockAdjustment(productName: string, quantity: number, type: string, userId?: string): void {
-    this.addNotification({
-      title: 'Stock Adjustment',
-      message: `${type} ${quantity} units of ${productName}`,
-      type: 'warning',
-      userId: userId,
-      actionUrl: '/inventory'
-    });
+    // COMPLETELY DISABLED - No stock adjustment notifications
+    return;
   }
 
   notifyWarehouseUpdated(warehouseName: string, action: string, userId?: string): void {
@@ -357,6 +470,9 @@ export class NotificationService {
       title: 'Warehouse Updated',
       message: `${action} performed on ${warehouseName}`,
       type: 'info',
+      priority: 'low',
+      category: 'warehouse',
+      suppressible: true,
       userId: userId,
       actionUrl: '/warehouse'
     });

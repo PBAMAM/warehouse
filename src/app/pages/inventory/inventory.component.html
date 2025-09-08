@@ -32,6 +32,14 @@
           <i class="fas fa-download"></i>
           Export
         </button>
+        <button class="btn btn-outline" (click)="openNotificationSettings()">
+          <i class="fas fa-bell-slash"></i>
+          Notification Settings
+        </button>
+        <button class="btn btn-danger" (click)="clearStockNotifications()">
+          <i class="fas fa-trash"></i>
+          Clear Stock Notifications
+        </button>
       </div>
     </div>
   </div>
@@ -879,6 +887,92 @@
         <i class="fas fa-times"></i>
         Close
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- Notification Settings Modal -->
+<div class="modal" [class.active]="showNotificationSettingsModal" *ngIf="showNotificationSettingsModal">
+  <div class="modal-backdrop" (click)="closeNotificationSettings()"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>
+        <i class="fas fa-bell-slash"></i>
+        Notification Settings
+      </h3>
+      <button class="btn btn-close" (click)="closeNotificationSettings()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="notification-settings">
+        <div class="setting-group">
+          <h4>Notification Types</h4>
+          <div class="setting-item">
+            <label class="switch">
+              <input type="checkbox" [(ngModel)]="notificationSettings.showSuccessNotifications">
+              <span class="slider"></span>
+            </label>
+            <div class="setting-info">
+              <strong>Success Notifications</strong>
+              <p>Show notifications for successful operations (e.g., "Item updated successfully")</p>
+            </div>
+          </div>
+          <div class="setting-item">
+            <label class="switch">
+              <input type="checkbox" [(ngModel)]="notificationSettings.showInfoNotifications">
+              <span class="slider"></span>
+            </label>
+            <div class="setting-info">
+              <strong>Info Notifications</strong>
+              <p>Show informational messages (e.g., "No orders found")</p>
+            </div>
+          </div>
+          <div class="setting-item">
+            <label class="switch">
+              <input type="checkbox" [(ngModel)]="notificationSettings.showWarningNotifications">
+              <span class="slider"></span>
+            </label>
+            <div class="setting-info">
+              <strong>Warning Notifications</strong>
+              <p>Show warnings (e.g., "Low stock alert", "Item deleted with stock")</p>
+            </div>
+          </div>
+          <div class="setting-item">
+            <label class="switch">
+              <input type="checkbox" [(ngModel)]="notificationSettings.showErrorNotifications">
+              <span class="slider"></span>
+            </label>
+            <div class="setting-info">
+              <strong>Error Notifications</strong>
+              <p>Show error messages (e.g., "Failed to save item")</p>
+            </div>
+          </div>
+          <div class="setting-item">
+            <label class="switch">
+              <input type="checkbox" [(ngModel)]="notificationSettings.showStockAdjustmentNotifications">
+              <span class="slider"></span>
+            </label>
+            <div class="setting-info">
+              <strong>Stock Adjustment Notifications</strong>
+              <p>Show notifications for stock adjustments (e.g., "Stock in 50 units")</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="setting-group">
+          <h4>Throttling Settings</h4>
+          <div class="setting-item">
+            <label for="throttleDuration">Throttle Duration (seconds)</label>
+            <input type="number" id="throttleDuration" [(ngModel)]="notificationSettings.throttleDuration" min="1" max="60">
+            <p>Prevent duplicate notifications within this time period</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeNotificationSettings()">Cancel</button>
+      <button class="btn btn-primary" (click)="saveNotificationSettings()">Save Settings</button>
     </div>
   </div>
 </div>

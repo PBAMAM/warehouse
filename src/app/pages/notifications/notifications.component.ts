@@ -144,6 +144,9 @@ export class NotificationsComponent implements OnInit, OnDestroy {
             title: notification.title,
             message: notification.message,
             type: notification.type,
+            priority: notification.priority || 'low',
+            category: notification.category || 'general',
+            suppressible: notification.suppressible !== undefined ? notification.suppressible : true,
             userId: notification.userId || undefined,
             actionUrl: notification.actionUrl
           });

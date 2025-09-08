@@ -422,15 +422,8 @@ export class InventoryService {
 
           // Commit the batch
           return batch.commit().then(() => {
-            this.notificationService.showSuccess('Stock adjusted successfully!');
-            
-            // Notify administrators about stock adjustment
-            this.notificationService.notifyStockAdjustment(
-              currentData.product?.name || 'Unknown Product',
-              adjustmentQuantity,
-              movement.movementType || 'adjustment',
-              movement.userId
-            );
+            // DISABLED: No stock adjustment notifications to prevent spam
+            // this.notificationService.notifyStockAdjustment(...);
           });
         })
         .then(() => {
