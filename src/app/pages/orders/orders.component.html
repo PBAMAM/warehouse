@@ -689,3 +689,47 @@
     </div>
   </div>
 </div>
+
+<!-- Print Invoice Modal -->
+<div class="modal" [class.active]="showPrintModal" *ngIf="showPrintModal">
+  <div class="modal-backdrop" (click)="closePrintModal()"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Print Invoice - {{ selectedOrder?.orderNumber }}</h3>
+      <button class="btn btn-close" (click)="closePrintModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="print-preview" *ngIf="selectedOrder">
+        <div class="preview-header">
+          <h4>Invoice Preview</h4>
+          <p>This will generate a professional invoice for order {{ selectedOrder.orderNumber }}</p>
+        </div>
+        
+        <div class="preview-content">
+          <div class="preview-section">
+            <h5>Customer Information</h5>
+            <p><strong>{{ selectedOrder.customerName }}</strong></p>
+            <p>{{ selectedOrder.customerEmail }}</p>
+            <p>{{ selectedOrder.customerPhone }}</p>
+          </div>
+          
+          <div class="preview-section">
+            <h5>Order Summary</h5>
+            <p><strong>Items:</strong> {{ selectedOrder.items.length }} items</p>
+            <p><strong>Total Amount:</strong> {{ selectedOrder.totalAmount | currency }}</p>
+            <p><strong>Status:</strong> {{ selectedOrder.status | titlecase }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closePrintModal()">Cancel</button>
+      <button class="btn btn-primary" (click)="generateInvoice()">
+        <i class="fas fa-print"></i>
+        Generate & Print Invoice
+      </button>
+    </div>
+  </div>
+</div>

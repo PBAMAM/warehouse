@@ -51,6 +51,7 @@ export class OrdersComponent implements OnInit, OnDestroy {
   showOrderModal = false;
   showStatusModal = false;
   showViewModal = false;
+  showPrintModal = false;
   editingOrder: Order | null = null;
   selectedOrder: Order | null = null;
   
@@ -508,7 +509,383 @@ export class OrdersComponent implements OnInit, OnDestroy {
   }
 
   printOrder(order: Order) {
-    this.notificationService.showInfo('Print functionality coming soon!');
+    this.selectedOrder = order;
+    this.showPrintModal = true;
+  }
+
+  closePrintModal() {
+    this.showPrintModal = false;
+    this.selectedOrder = null;
+  }
+
+  generateInvoice() {
+    if (!this.selectedOrder) return;
+
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) {
+      this.notificationService.showError('Unable to open print window. Please check your popup blocker.');
+      return;
+    }
+
+    // Generate invoice HTML
+    const invoiceHTML = this.generateInvoiceHTML(this.selectedOrder);
+    
+    printWindow.document.write(invoiceHTML);
+    printWindow.document.close();
+    
+    // Wait for content to load, then print
+    printWindow.onload = () => {
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    };
+
+    this.closePrintModal();
+    this.notificationService.showSuccess('Invoice generated successfully!');
+  }
+
+  private generateInvoiceHTML(order: Order): string {
+    const currentDate = new Date().toLocaleDateString();
+    const orderDate = new Date(order.createdAt).toLocaleDateString();
+    
+    // Helper function to format currency
+    const formatCurrency = (amount: number): string => {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD'
+      }).format(amount);
+    };
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Invoice - ${order.orderNumber}</title>
+        <style>
+          ${this.getPrintStyles()}
+        </style>
+      </head>
+      <body>
+        <div class="invoice-container">
+          <!-- Invoice Header -->
+          <div class="invoice-header">
+            <div class="company-info">
+              <h1>WAREHOUSE MANAGEMENT SYSTEM</h1>
+              <p>123 Business Street, City, State 12345</p>
+              <p>Phone: (555) 123-4567 | Email: info@warehouse.com</p>
+            </div>
+            <div class="invoice-info">
+              <h2>INVOICE</h2>
+              <div class="invoice-details">
+                <p><strong>Invoice #:</strong> ${order.orderNumber}</p>
+                <p><strong>Date:</strong> ${orderDate}</p>
+                <p><strong>Status:</strong> ${order.status.toUpperCase()}</p>
+                <p><strong>Priority:</strong> ${order.priority.toUpperCase()}</p>
+                ${order.trackingNumber ? `<p><strong>Tracking #:</strong> ${order.trackingNumber}</p>` : ''}
+              </div>
+            </div>
+          </div>
+
+          <!-- Customer Information -->
+          <div class="customer-section">
+            <h3>Bill To:</h3>
+            <div class="customer-info">
+              <p><strong>${order.customerName}</strong></p>
+              <p>${order.customerEmail}</p>
+              <p>${order.customerPhone}</p>
+            </div>
+          </div>
+
+          <!-- Shipping Address -->
+          <div class="shipping-section">
+            <h3>Ship To:</h3>
+            <div class="shipping-info">
+              <p>${order.shippingAddress.street}</p>
+              <p>${order.shippingAddress.city}, ${order.shippingAddress.state} ${order.shippingAddress.zipCode}</p>
+              <p>${order.shippingAddress.country}</p>
+            </div>
+          </div>
+
+          <!-- Order Items -->
+          <div class="items-section">
+            <h3>Order Items</h3>
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>SKU</th>
+                  <th>Quantity</th>
+                  <th>Unit Price</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${order.items.map(item => `
+                  <tr>
+                    <td>
+                      <div class="item-details">
+                        <strong>${item.product.name}</strong>
+                        ${item.product.brand ? `<br><small>Brand: ${item.product.brand}</small>` : ''}
+                      </div>
+                    </td>
+                    <td>${item.product.sku}</td>
+                    <td>${item.quantity}</td>
+                    <td>${formatCurrency(item.unitPrice)}</td>
+                    <td>${formatCurrency(item.totalPrice)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Order Summary -->
+          <div class="summary-section">
+            <div class="summary-details">
+              <div class="summary-row">
+                <span>Subtotal:</span>
+                <span>${formatCurrency(order.subtotal)}</span>
+              </div>
+              ${order.taxAmount > 0 ? `
+                <div class="summary-row">
+                  <span>Tax (10%):</span>
+                  <span>${formatCurrency(order.taxAmount)}</span>
+                </div>
+              ` : ''}
+              ${order.shippingAmount > 0 ? `
+                <div class="summary-row">
+                  <span>Shipping:</span>
+                  <span>${formatCurrency(order.shippingAmount)}</span>
+                </div>
+              ` : ''}
+              ${order.discountAmount > 0 ? `
+                <div class="summary-row">
+                  <span>Discount:</span>
+                  <span>-${formatCurrency(order.discountAmount)}</span>
+                </div>
+              ` : ''}
+              <div class="summary-row total">
+                <span><strong>TOTAL:</strong></span>
+                <span><strong>${formatCurrency(order.totalAmount)}</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Notes -->
+          ${order.notes ? `
+            <div class="notes-section">
+              <h3>Notes</h3>
+              <p>${order.notes}</p>
+            </div>
+          ` : ''}
+
+          <!-- Footer -->
+          <div class="invoice-footer">
+            <p>Thank you for your business!</p>
+            <p>Generated on ${currentDate}</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  private getPrintStyles(): string {
+    return `
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: Arial, sans-serif;
+        font-size: 12px;
+        line-height: 1.4;
+        color: #333;
+        background: white;
+      }
+
+      .invoice-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background: white;
+      }
+
+      .invoice-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #333;
+      }
+
+      .company-info h1 {
+        font-size: 24px;
+        color: #2c3e50;
+        margin-bottom: 10px;
+      }
+
+      .company-info p {
+        margin-bottom: 5px;
+        color: #666;
+      }
+
+      .invoice-info h2 {
+        font-size: 28px;
+        color: #2c3e50;
+        margin-bottom: 15px;
+        text-align: right;
+      }
+
+      .invoice-details p {
+        margin-bottom: 5px;
+        text-align: right;
+      }
+
+      .customer-section, .shipping-section {
+        margin-bottom: 25px;
+        display: inline-block;
+        width: 48%;
+        vertical-align: top;
+      }
+
+      .shipping-section {
+        margin-left: 4%;
+      }
+
+      .customer-section h3, .shipping-section h3 {
+        font-size: 16px;
+        color: #2c3e50;
+        margin-bottom: 10px;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 5px;
+      }
+
+      .customer-info p, .shipping-info p {
+        margin-bottom: 3px;
+      }
+
+      .items-section {
+        margin-bottom: 25px;
+      }
+
+      .items-section h3 {
+        font-size: 16px;
+        color: #2c3e50;
+        margin-bottom: 15px;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 5px;
+      }
+
+      .items-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+      }
+
+      .items-table th,
+      .items-table td {
+        padding: 10px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+      }
+
+      .items-table th {
+        background-color: #f8f9fa;
+        font-weight: bold;
+        color: #2c3e50;
+      }
+
+      .items-table td {
+        vertical-align: top;
+      }
+
+      .item-details strong {
+        display: block;
+        margin-bottom: 3px;
+      }
+
+      .item-details small {
+        color: #666;
+      }
+
+      .summary-section {
+        margin-bottom: 25px;
+      }
+
+      .summary-details {
+        float: right;
+        width: 300px;
+        border: 1px solid #ddd;
+        padding: 15px;
+        background-color: #f8f9fa;
+      }
+
+      .summary-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        padding: 3px 0;
+      }
+
+      .summary-row.total {
+        border-top: 2px solid #333;
+        margin-top: 10px;
+        padding-top: 10px;
+        font-size: 14px;
+      }
+
+      .notes-section {
+        margin-bottom: 25px;
+        clear: both;
+      }
+
+      .notes-section h3 {
+        font-size: 16px;
+        color: #2c3e50;
+        margin-bottom: 10px;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 5px;
+      }
+
+      .notes-section p {
+        padding: 10px;
+        background-color: #f8f9fa;
+        border-left: 4px solid #3498db;
+        border-radius: 4px;
+      }
+
+      .invoice-footer {
+        text-align: center;
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 1px solid #ddd;
+        color: #666;
+      }
+
+      .invoice-footer p {
+        margin-bottom: 5px;
+      }
+
+      @media print {
+        body {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        
+        .invoice-container {
+          margin: 0;
+          padding: 0;
+        }
+        
+        .summary-details {
+          page-break-inside: avoid;
+        }
+      }
+    `;
   }
 
   exportOrders() {
